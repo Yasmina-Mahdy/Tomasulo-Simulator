@@ -1,6 +1,7 @@
 from enum import Enum
 from ROB import Reorderbuffer as rob
 from ROB import buff_entry as be
+from RegFile import RegFile as RF
 
 class RegStation():
     # create a list of reg entries for the RegStation
@@ -198,7 +199,8 @@ class ALRS(ReservationStation):
             else:
                 self.Qj = rob.robEntry(rs)
         else:
-            # get the value from the actual registers (HOW)? and put it in Vj
+            # get the value from RF
+            self.Vj = RF.regRead(rs)
             self.Qj = 0
             
 
@@ -220,7 +222,8 @@ class ALRS(ReservationStation):
                 else:
                     self.Qk = rob.robEntry(rt)
             else:
-                # get the value from the actual registers (HOW)? and put it in Vj
+                # get the value from RF
+                self.Vk = RF.regRead(rt)
                 self.Qk = 0
                 
         # create an entry in the ROB
@@ -241,9 +244,9 @@ class ALRS(ReservationStation):
             # compute the result and signal that it is ready to be written     
             # fix the lower bit issues       
             match self.op:
-                case 'ADD' | 'ADDI': self.result = (self.Vj + self.Vk) & 0xFFFF # only store lower 16 bits
+                case 'ADD' | 'ADDI': self.result = (self.Vj + self.Vk)
                 case 'NAND': self.result = ~(self.Vj & self.Vk)
-                case 'MUL': self.result = (self.Vj * self.Vk) & 0xFFFF # only store lower 16 bits
+                case 'MUL': self.result = (self.Vj * self.Vk)
             self.readyToWrite = True
             self.current_state = State.EXECUTED
 
@@ -296,11 +299,3 @@ class LoadRS(ReservationStation):
     
      def __write(self):
         super().write()
-
-    
-
-
-        
-             
-
-    
