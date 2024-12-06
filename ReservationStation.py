@@ -1,4 +1,5 @@
 from enum import Enum
+from ROB import Reorderbuffer as rob
 
 class RegStation():
     # create a list of reg entries for the RegStation
@@ -49,7 +50,28 @@ class FU(Enum):
            'op' : 'MUL',
            'execution_cycles': 8,
           }
-
+    LOAD = {
+            'op' : 'LOAD',
+            'execution_cycles': 6
+           }
+    STORE = {
+            'op' : 'STORE',
+            'execution_cycles': 6
+            }
+    BEQ =   {
+              'op' : 'BEQ',
+              'execution_cycles': 1
+             }
+    CALL =   {
+              'op' : 'CALL',
+              'execution_cycles': 1
+             }
+    RET =   {
+              'op' : 'RET',
+              'execution_cycles': 1
+             }
+    
+    
 
 class ReservationStation():
     def __init__(self, name, unit):
@@ -142,7 +164,7 @@ class ALRS(ReservationStation):
         super().__init__(name, unit)
     
     # issue implementation for Arith & logic
-    def __issue (self, ROB, rd, rs, rt):
+    def __issue (self, ROB,ROBj,ROBk, rd, rs, rt):
 
         # call parent issue function
         super().issue(ROB)
@@ -153,7 +175,8 @@ class ALRS(ReservationStation):
                 # set Vj = ROB[ROB].value
                 # set Qj = 0
             # else
-            self.Qj = ROB
+            # assiging the correct ROB for Qj
+            self.Qj = ROBj
         else:
             # get the value from the actual registers (HOW)? and put it in Vj
             self.Qj = 0
@@ -171,7 +194,8 @@ class ALRS(ReservationStation):
                     # set Vk = ROB[ROB].value
                     # set Qk = 0
                 # else
-                self.Qk = ROB
+                # assiging the correct ROB for Qk
+                self.Qk = ROBk
             else:
                 # get the value from the actual registers (HOW)? and put it in Vj
                 self.Qk = 0
@@ -212,3 +236,39 @@ class ALRS(ReservationStation):
             case  'executing' | 'issued' if self.readyToExec(): self.__execute()
             # if ready to write and there's an available bus, write
             case  'executed' if can_write : self.__write() 
+
+
+# class for the load and stor reservation stations
+class LoadRS(ReservationStation):
+     def __init__(self, name, unit):
+          super().__init__(name, unit)
+    
+     def __issue(self, ROB, ROBj, rs,rd, offset):
+         super().issue(ROB)
+
+         self.Addr = offset
+
+         if(RegStation.isBusy(rs)):
+             self.Qj = ROBj
+         else: 
+            self.Qj = 0
+            self.Vj = rob.getvalue(rs)
+
+         self.Dest = rd
+
+
+     def __execute(self,memory,rd, rs, offset):
+         super().execute()
+
+         rob.setvalue(rd, memory[offset + RegStation.regs[rs]])
+    
+     def __write(self):
+        super().write()
+
+    
+
+
+        
+             
+
+    
