@@ -19,7 +19,7 @@ class Reorderbuffer:
     
     @staticmethod
     # adds a new instruction to the end of the reorder buffer and returns its index
-    def addinstruction(self, inst:ROB):
+    def addInst(self, inst:ROB):
         self.buffer.append(inst)
         self.instindex(inst.dest)
 
@@ -35,7 +35,7 @@ class Reorderbuffer:
     
     @staticmethod
     # returns the position of an instruction in the ROB
-    def instindex(self,dest):
+    def robEntry(self, dest):
        index = 0
        for inst in self.buffer:
             index += 1
@@ -45,7 +45,7 @@ class Reorderbuffer:
 
     @staticmethod
     # changes the ready and value of an instruction 
-    def changeready(self,dest, value):
+    def setReady(self,dest, value):
         for inst in self.buffer:
             if inst.Dest == dest:
                 inst.Ready = True
@@ -55,14 +55,14 @@ class Reorderbuffer:
     
     @staticmethod
     # returns the ready value
-    def Isready(self, dest):
+    def isReady(self, dest):
         for inst in self.buffer:
             if inst.Dest == dest:
                 return inst.Ready
         
 
     @staticmethod
-    def getvalue(self, dest):
+    def getValue(self, dest):
         for inst in self.buffer:
             if inst.Dest == dest:
                 return self.inst.Value
