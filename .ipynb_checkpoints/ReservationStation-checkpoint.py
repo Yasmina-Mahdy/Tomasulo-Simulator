@@ -57,7 +57,7 @@ class FU(Enum):
            }
     STORE = {
             'op' : 'STORE',
-            'execution_cycles': 2
+            'execution_cycles': 6
             }
     BEQ =   {
               'op' : 'BEQ',
@@ -102,7 +102,6 @@ class ReservationStation():
         self.Qk = None
         self.Dest = None
         self.Addr = None
-        self.flushy = False
         
     # returns if the reservation station is busy
     def isBusy(self):
@@ -158,7 +157,6 @@ class ReservationStation():
     def write(self, rd):
         # maybe return a signal, along with the value, and it can be handled outside?
         self.busy = False
-        self.flushy = False
         self.execution_cycles = 0 
 
         # if(self.readyToWrite):
@@ -430,7 +428,6 @@ class BEQRS(ReservationStation):
          super().execute()
          if(self.Vj == self.Vk):
              # flushing handled in the main flush all the reservation stations
-             self.flushy =  True
              return pc + imm
          self.current_state = State.EXECUTED 
          return pc + 1
@@ -441,7 +438,7 @@ class BEQRS(ReservationStation):
         # call one of following function (issue, execute, write) [committing handles by ROB]
         match self.current_state:
             # if free and there's a free ROB -> issue
-            case ('written'|  'idle') if (rob.isFree() & new_inst): self.__issue(rs,rt,offset) 
+            case ('written'|  'idle') if (rob.isFree() & new_inst): self.__issue(rs,rt,offset)
             # if issued and ready to execute or already executing but not done -> execute
             case  ('executing' | 'issued') if self.readyToExec(): self.__execute()
             # if ready to write and there's an available bus, write
@@ -480,8 +477,6 @@ class CallRetRS(ReservationStation):
          if self.op == 'RET':
              return imm + self.Vj
          return pc + imm
-    
-
          
 
 

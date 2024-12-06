@@ -74,12 +74,6 @@ class Reorderbuffer:
         if len(self.buffer) == 6:
             return False
         return True
-    
-    @staticmethod
-    # flushes the ROB
-    def flush(self):
-        for b in self.buffer:
-            b = None
 
 
 
