@@ -61,7 +61,6 @@ class Reorderbuffer:
         
 
     @staticmethod
-    # returns the value of a certain instruction
     def getValue(self, dest):
         for inst in self.buffer:
             if inst.Dest == dest:
