@@ -26,7 +26,6 @@ class Reorderbuffer:
     @staticmethod
     # removes and returns the instruction at the top of the reorder buffer
     def commitInst(self):
-
         match self.Type:
             case 'AL' | 'LD' # add value to register
             case 'SW' # add to the memory
@@ -66,8 +65,17 @@ class Reorderbuffer:
         for inst in self.buffer:
             if inst.Dest == dest:
                 return self.inst.Value
+            
 
-
-
-
-
+    @staticmethod
+    # checks if the buffer has free space or not
+    def isFree(self):
+        if len(self.buffer) == 6:
+            return False
+        return True
+    
+    @staticmethod
+    # flushes the ROB
+    def flush(self):
+        for b in self.buffer:
+            b = None

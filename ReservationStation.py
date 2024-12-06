@@ -3,6 +3,7 @@ from ROB import Reorderbuffer as rob
 from ROB import buff_entry as be
 from RegFile import RegFile as RF
 
+
 class RegStation():
     # create a list of reg entries for the RegStation
     regs = [{"Reg" : i, "ROB" : 0} for i in range(16)]
@@ -58,7 +59,7 @@ class FU(Enum):
            }
     STORE = {
             'op' : 'STORE',
-            'execution_cycles': 6
+            'execution_cycles': 2
             }
     BEQ =   {
               'op' : 'BEQ',
@@ -103,6 +104,7 @@ class ReservationStation():
         self.Qk = None
         self.Dest = None
         self.Addr = None
+        self.flushy = False
         
     # returns if the reservation station is busy
     def isBusy(self):
@@ -158,6 +160,7 @@ class ReservationStation():
     def write(self, rd):
         # maybe return a signal, along with the value, and it can be handled outside?
         self.busy = False
+        self.flushy = False
         self.execution_cycles = 0 
 
         # if(self.readyToWrite):
@@ -278,24 +281,211 @@ class LoadRS(ReservationStation):
      def __init__(self, name, unit):
           super().__init__(name, unit)
     
-     def __issue(self, ROB, ROBj, rs,rd, offset):
-         super().issue(ROB)
+
+     def __issue(self, rs,rd, offset):
+         super().issue()
 
          self.Addr = offset
 
          if(RegStation.isBusy(rs)):
-             self.Qj = ROBj
+            if(rob.isReady(rs)):
+                # get value from ROB
+                self.Vj = rob.getValue(rs)
+                # reset Qj
+                self.Qj = 0
+                
+            self.Qj = rob.robEntry(rs)
+            
          else: 
             self.Qj = 0
-            self.Vj = rob.getvalue(rs)
+            self.Vj = # from regs 
 
-         self.Dest = rd
+         self.Dest = rob.addinst(be(self.op,rd,None, False))
+         # set the regStat entry  
+         RegStation.setROB(rd, self.Dest)
+         
 
-
-     def __execute(self,memory,rd, rs, offset):
+     def __execute(self,rd, rs, offset):
          super().execute()
-
-         rob.setvalue(rd, memory[offset + RegStation.regs[rs]])
+         self.Addr = offset + # read value stored in regs
+         # getting the value stored in the memory at a specific address 
+         self.current_state = State.EXECUTED 
+         # returning value 
     
-     def __write(self):
+     def __write(self, rd):
         super().write()
+        # writing value from execution to the regs 
+        self.current_state = State.WRITTEN
+        rob.setReady(rd , valuemem)
+
+     def proceed(self, ROB, rd, rs, rt, new_inst, offset,can_write):
+        # looks at current state and if the conditions to move to next state are satisified
+        # call one of following function (issue, execute, write) [committing handles by ROB]
+        match self.current_state:
+            # if free and there's a free ROB -> issue
+            case ('written'|  'idle') if (rob.isFree() & new_inst): self.__issue(rs,rd, offset)
+            # if issued and ready to execute or already executing but not done -> execute
+            case  ('executing' | 'issued') if self.readyToExec(): self.__execute()
+            # if ready to write and there's an available bus, write
+            case  'executed' if can_write : self.__write()   
+
+
+class StoreRS(ReservationStation):
+    def __init__(self, name, unit):
+          super().__init__(name, unit)
+
+    def __issue(self, rs,rt,offset):
+        super().issue()
+
+        self.Addr = offset
+
+        if(RegStation.isBusy(rs)):
+            if(rob.isReady(rs)):
+                # get value from ROB
+                self.Vj = rob.getValue(rs)
+                # reset Qj
+                self.Qj = 0
+                
+            self.Qj = rob.robEntry(rs)
+            
+        else: 
+            self.Qj = 0
+            self.Vj = # from regs 
+
+        if(RegStation.isBusy(rt)):
+            if(rob.isReady(rt)):
+                # get value from ROB
+                self.Vk = rob.getValue(rt)
+                # reset Qj
+                self.Qk = 0
+                
+            self.Qk = rob.robEntry(rt)
+            
+            
+        else: 
+            self.Qk = 0
+            self.Vk = # from regs 
+
+        self.Dest = rob.addinst(be(self.op,None,None, False))
+
+    
+    def __execute(self, rs, offset):
+         super().execute()
+         self.Addr = offset + # read value stored in regs
+         self.current_state = State.EXECUTED 
+         return self.Vk
+
+
+    def __write(self):
+        super().write()
+        # writing value from execution to the memory 
+        self.current_state = State.WRITTEN
+        rob.setReady(mem,self.Vk)
+
+    def proceed(self, ROB, rd, rs, rt, new_inst, offset,can_write):
+        # looks at current state and if the conditions to move to next state are satisified
+        # call one of following function (issue, execute, write) [committing handles by ROB]
+        match self.current_state:
+            # if free and there's a free ROB -> issue
+            case ('written'|  'idle') if (rob.isFree() & new_inst): self.__issue(rs,rt,offset)
+            # if issued and ready to execute or already executing but not done -> execute
+            case  ('executing' | 'issued') if self.readyToExec(): self.__execute()
+            # if ready to write and there's an available bus, write
+            case  'executed' if can_write : self.__write()   
+
+class BEQRS(ReservationStation):
+    def __init__(self, name, unit):
+          super().__init__(name, unit)
+
+    def __issue(self, rs,rt,imm):
+        super().issue()
+
+        self.Addr = imm
+
+        if(RegStation.isBusy(rs)):
+            if(rob.isReady(rs)):
+                # get value from ROB
+                self.Vj = rob.getValue(rs)
+                # reset Qj
+                self.Qj = 0
+                
+            self.Qj = rob.robEntry(rs)
+            
+        else: 
+            self.Qj = 0
+            self.Vj = # from regs 
+
+        if(RegStation.isBusy(rt)):
+            if(rob.isReady(rt)):
+                # get value from ROB
+                self.Vk = rob.getValue(rt)
+                # reset Qj
+                self.Qk = 0
+                
+            self.Qk = rob.robEntry(rt)
+            
+        else: 
+            self.Qk = 0
+            self.Vk = # from regs 
+
+        self.Dest = rob.addinst(be(self.op,None,None, False))
+    
+
+    def __execute(self, pc, imm):
+         super().execute()
+         if(self.Vj == self.Vk):
+             # flushing handled in the main flush all the reservation stations
+             self.flushy =  True
+             return pc + imm
+         self.current_state = State.EXECUTED 
+         return pc + 1
+         
+
+    def proceed(self, ROB, rd, rs, rt, new_inst,offset, can_write):
+        # looks at current state and if the conditions to move to next state are satisified
+        # call one of following function (issue, execute, write) [committing handles by ROB]
+        match self.current_state:
+            # if free and there's a free ROB -> issue
+            case ('written'|  'idle') if (rob.isFree() & new_inst): self.__issue(rs,rt,offset) 
+            # if issued and ready to execute or already executing but not done -> execute
+            case  ('executing' | 'issued') if self.readyToExec(): self.__execute()
+            # if ready to write and there's an available bus, write
+            case  'executed' if can_write : self.__write()   
+
+
+class CallRetRS(ReservationStation):
+
+    def __init__(self, name, unit):
+          super().__init__(name, unit)
+
+    def __issue(self, rs,rd,imm):
+        super().issue()
+
+        self.Addr = imm
+
+        if self.op == 'RET':
+            if(RegStation.isBusy(rs)):
+                if(rob.isReady(rs)):
+                    # get value from ROB
+                    self.Vj = rob.getValue(rs)
+                    # reset Qj
+                    self.Qj = 0
+                    
+                self.Qj = rob.robEntry(rs)
+                
+            else: 
+                self.Qj = 0
+                self.Vj = # from regs  
+
+        self.Dest = rob.addinst(be(self.op,None,None, False))  
+
+    def __execute(self, pc,imm):
+         super().execute()
+         self.current_state = State.EXECUTED 
+         if self.op == 'RET':
+             return imm + self.Vj
+         return pc + imm
+
+    
+ 
+
