@@ -22,9 +22,9 @@ class RegStation():
     # free a reg's ROB entry
     @staticmethod
     def freeReg(ROB):
+        # any reg waiting on the ROB entry is freed
         for reg in RegStation.regs:
             if reg['ROB'] == ROB:
-                
                 reg['ROB'] = 0
 
 
@@ -36,7 +36,7 @@ class FU(Enum):
            'execution_cycles': 2,
            }
     
-    ADD = {
+    ADDI = {
            'op' : 'ADDI',
            'execution_cycles': 2,
            }
@@ -73,7 +73,7 @@ class ReservationStation():
         self.Dest = None
         self.Addr = None
         
-
+    # returns if the reservation station is busy
     def isBusy(self):
         return self.busy
     
@@ -90,7 +90,7 @@ class ReservationStation():
         self.Dest = None
         self.Addr = None
 
-    # should also receive other data like Vj or Qj
+    # could be "extended" [not overriden] in child case if needed [make sure to call the super version in child regardless]
     def issue (self, ROB):
         self.current_state = 'issued'
         # stores any of the following that is needed
@@ -98,14 +98,16 @@ class ReservationStation():
         self.busy = True
         self.Dest = ROB
 
+    # override this method if no Qk or other conditions are needed (like in load/store)
     def readyToExec(self):
-        # override this method if no Qk or other conditions are needed (like in load/store)
+        
         return (self.Qj == 0) and (self.Qk == 0)
     
+    # extend in child classes
     def execute(self):
         # ExecutionCycles should be a variable in each child as needed
         self.current_state = 'executing'
-        #if(self.current_execution_cycle == self.total_execution_cycles):
+        #if(self.current_execution_cycle == self.total_execution_cycles - 1):
             #self.current_state = 'executed'
             # set self.result = the result of whatever operation you need to do if applicable
 
@@ -113,6 +115,7 @@ class ReservationStation():
     # if a function does not "write", still keep this to reset the values
     # kind of the trickiest to implement since needs to access all other RSs + ROB
     # as well as check that no other instr is writing
+    # extended in child class
     def write(self):
         # maybe return a signal, along with the value, and it can be handled outside?
         self.busy = False
@@ -120,10 +123,11 @@ class ReservationStation():
 
         if(self.readyToWrite):
             self.readyToWrite = False
-            self.current_state = 'idle'
+            self.current_state = 'written'
         
         # add logic to write and what to return
 
+    # override in child class
     def proceed(self):
         # looks at current state and if the conditions to move to next state are satisified
         # call one of following function (issue, execute, write) [committing handles by ROB]
@@ -133,12 +137,15 @@ class ReservationStation():
 # Arithmetic and Logic RS
 class ALRS(ReservationStation): 
 
+    # calls parent constructor
     def __init__(self, name, unit):
-        super.__init__(self, name, unit)
+        super().__init__(name, unit)
     
+    # issue implementation for Arith & logic
     def __issue (self, ROB, rd, rs, rt):
+
         # call parent issue function
-        super().issue(self, ROB)
+        super().issue(ROB)
 
         # set rs
         if(RegStation.isBusy(rs)):
@@ -151,11 +158,13 @@ class ALRS(ReservationStation):
             # get the value from the actual registers (HOW)? and put it in Vj
             self.Qj = 0
             
+
         # if addi, assume rt has the imm
         if(self.op == 'ADDI'):
             self.Vk = rt
             self.Qk = 0
-        # set rt    
+
+        # else set rt    
         else:    
             if(RegStation.isBusy(rt)):
                 # check if ROB head is ready
@@ -167,38 +176,39 @@ class ALRS(ReservationStation):
                 # get the value from the actual registers (HOW)? and put it in Vj
                 self.Qk = 0
                 
+        # set the regStat entry        
         RegStation.setROB(rd, ROB)
 
 
+    # execute implementation for Arith & logic
     def __execute(self):
+        # call parent issue function
         super().execute()
+        # increment number of execution cycles
         self.current_execution_cycle += 1 
-        if(self.current_execution_cycle == self.total_execution_cycles):
-            self.readyToWrite = True
+
+        # if this is the last cycle to be executed
+        if(self.current_execution_cycle == self.total_execution_cycles - 1):
+            # compute the result and signal that it is ready to be written            
             match self.op:
-                case 'ADD' | 'ADDI': self.result = self.Vj + self.Vk
+                case 'ADD' | 'ADDI': self.result = (self.Vj + self.Vk) & 0xFFFF # only store lower 16 bits
                 case 'NAND': self.result = ~(self.Vj & self.Vk)
                 case 'MUL': self.result = (self.Vj * self.Vk) & 0xFFFF # only store lower 16 bits
+            self.readyToWrite = True
 
-
+    # write implementation for Arith & logic
     def __write(self):
         super().write()
         # what to do...?
 
-    # the fun
+    # the function that is called from the main
     def proceed(self, ROB, rd, rs, rt, can_write):
         # looks at current state and if the conditions to move to next state are satisified
         # call one of following function (issue, execute, write) [committing handles by ROB]
         match self.current_state:
             # if free and there's a free ROB -> issue
-            case 'idle' if ROB != None: self.__issue(self, ROB, rd, rs, rt)
+            case 'written' | 'idle' if ROB != None: self.__issue(ROB, rd, rs, rt)
             # if issued and ready to execute or already executing but not done -> execute
-            case 'issued' if self.__readyToExec() | 'executing': self.__execute()
+            case  'executing' | 'issued' if self.readyToExec(): self.__execute()
             # if ready to write and there's an available bus, write
             case  'executed' if can_write : self.__write() 
-
-            
-
-            
-    
-    
