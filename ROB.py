@@ -18,13 +18,19 @@ class Reorderbuffer:
             b.Ready = False
     
     @staticmethod
-    # adds a new instruction to the end of the reorder buffer
+    # adds a new instruction to the end of the reorder buffer and returns its index
     def addinstruction(self, inst:ROB):
         self.buffer.append(inst)
+        self.instindex(inst.dest)
 
     @staticmethod
     # removes and returns the instruction at the top of the reorder buffer
-    def removeinst(self):
+    def commitInst(self):
+
+        match self.Type:
+            case 'AL' | 'LD' # add value to register
+            case 'SW' # add to the memory
+            case 'BEQ' | 'RET' | 'CALL' # pc + offset
         return self.buffer.popleft()
     
     @staticmethod
@@ -38,11 +44,12 @@ class Reorderbuffer:
     
 
     @staticmethod
-    # changes the ready of an instruction 
-    def changeready(self,dest):
+    # changes the ready and value of an instruction 
+    def changeready(self,dest, value):
         for inst in self.buffer:
             if inst.Dest == dest:
                 inst.Ready = True
+                inst.Value = value
                 rs.freeReg(self.instindex(dest))
 
     
@@ -52,12 +59,9 @@ class Reorderbuffer:
         for inst in self.buffer:
             if inst.Dest == dest:
                 return inst.Ready
-            
-    def setvalue(self, dest, value):
-        for inst in self.buffer:
-            if inst.Dest == dest:
-                inst.Value = value
+        
 
+    @staticmethod
     def getvalue(self, dest):
         for inst in self.buffer:
             if inst.Dest == dest:
