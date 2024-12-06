@@ -9,7 +9,7 @@ def int16(value):
 
 class RegFile:
     # initialize regs to zero
-    regs = [0 in range(8)]
+    regs = [0 for i in range(8)]
 
     @staticmethod
     def regWrite(self, rd,  res):
