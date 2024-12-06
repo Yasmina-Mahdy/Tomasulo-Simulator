@@ -61,7 +61,6 @@ class ReservationStation():
         self.op = FU[unit].value['op']
         # number of cycles the instr has been executed, initially zero (to be compared with total_execution_cycles variable of the child class)
         self.current_execution_cycle = 0 
-        # doesn't matter what the nextState is when not busy but still, we can have it be idle
         # we should store a pair/dict that indicates for each state, what it's next state is
         self.current_state = 'idle'
         # value stored after execution is done
@@ -78,10 +77,18 @@ class ReservationStation():
     def isBusy(self):
         return self.busy
     
-    # how to implement this?
+    # resets everything in the case of a branch misprediction 
     def flush(self):
-        # resets everything in the case of a branch misprediction 
-        pass
+        self.busy = False 
+        self.current_execution_cycle = 0 
+        self.current_state = 'idle'
+        self.result = None   
+        self.Vj = None
+        self.Vk = None
+        self.Qj = None
+        self.Qk = None
+        self.Dest = None
+        self.Addr = None
 
     # should also receive other data like Vj or Qj
     def issue (self, ROB):
