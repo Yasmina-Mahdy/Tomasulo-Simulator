@@ -7,7 +7,7 @@ import RegFile
 class buff_entry:
     Type: str
     Unit: str
-    Dest: str
+    Dest: int
     Value: int
     Addr: int
     Ready: bool
