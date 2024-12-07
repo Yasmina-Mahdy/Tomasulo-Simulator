@@ -230,7 +230,7 @@ class ALRS(ReservationStation):
         if(self.readyToWrite):
             self.readyToWrite = False
             self.current_state = State.WRITTEN
-            rob.setReady(rd, self.result)
+            rob.setReady(rd,self.name,self.result)
         # what to do...?
 
     # the function that is called from the main
@@ -285,7 +285,7 @@ class LRS(ReservationStation):
         if(self.readyToWrite):
             self.readyToWrite = False
             self.current_state = State.WRITTEN
-            rob.setReady(rd, self.result)
+            rob.setReady(rd, self.name,self.result)
         
 
      def proceed(self, can_write):
@@ -346,7 +346,7 @@ class SRS(ReservationStation):
         super().write()
         # writing value from execution to the regs 
         self.current_state = State.WRITTEN
-        rob.setReady(rd, self.Vk)
+        rob.setReady(rd,self.name, self.Vk)
 
     def proceed(self, can_write):
         # looks at current state and if the conditions to move to next state are satisified
@@ -394,7 +394,7 @@ class BRS(ReservationStation):
              # assuming pc + 1 is implicit
         # writing value from execution to the regs 
          self.current_state = State.WRITTEN    
-         rob.setReady('beq', self.Vj == self.Vk)
+         rob.setReady('beq',self.name, self.Vj == self.Vk)
 
          
 
@@ -431,7 +431,8 @@ class CRRS(ReservationStation):
     def __execute(self):
          self.current_state = State.EXECUTED
          if self.op == 'RET':
-             rob.setReady('ret', self.Vj)
+             rob.setAddr('ret', self.Vj)
+             rob.setReady('ret',self.name, self.Vj)
              super().write()
              self.current_state = State.WRITTEN
          else:
@@ -443,7 +444,7 @@ class CRRS(ReservationStation):
         super().write()
         # writing value from execution to the regs 
         self.current_state = State.WRITTEN
-        rob.setReady(1, self.result)
+        rob.setReady(1, self.name,self.result)
     
 
     def proceed(self, can_write):
