@@ -58,13 +58,13 @@ class State(Enum):
 
 
 class ReservationStation():
-    def __init__(self, name, unit):
+    def __init__(self, name, unit, op):
         # names like load1, load2, mul3, etc.
         self.name = name
         # initially not busy
         self.busy = False 
         self.total_execution_cycles = FU[unit].value['execution_cycles']
-        self.op = FU[unit].value['op']
+        self.op = op
         # number of cycles the instr has been executed, initially zero (to be compared with total_execution_cycles variable of the child class)
         self.current_execution_cycle = 0 
         # we should store a pair/dict that indicates for each state, what it's next state is
@@ -174,13 +174,14 @@ class ALRS(ReservationStation):
         super().__init__(name, unit)
     
     # issue implementation for Arith & logic
-    def __issue (self, rd, rs, rt):
+    def issue (self, rd, rs, rt, type):
 
         # call parent issue function
         super().issue(rs)
+        self.type = type
 
         # if addi, assume rt has the imm
-        if(self.op == 'ADDI'):
+        if(self.type == 'ADDI'):
             self.Vk = rt
             self.Qk = 0
         else:    
@@ -200,7 +201,7 @@ class ALRS(ReservationStation):
                 self.Qk = 0
                 
         # create an entry in the ROB
-        self.Dest = rob.addInst(be(self.op, rd, None, None, False))
+        self.Dest = rob.addInst(be('AL', rd, None, None, False))
         # set the regStat entry  
         RegStation.setROB(rd, self.Dest)
 
@@ -217,7 +218,7 @@ class ALRS(ReservationStation):
             # compute the result and signal that it is ready to be written     
             # fix the lower bit issues       
             match self.op:
-                case 'ADD' | 'ADDI': self.result = (self.Vj + self.Vk)
+                case 'ADD': self.result = (self.Vj + self.Vk)
                 case 'NAND': self.result = ~(self.Vj & self.Vk)
                 case 'MUL': self.result = (self.Vj * self.Vk)
             self.readyToWrite = True
@@ -241,9 +242,13 @@ class ALRS(ReservationStation):
             # if free and there's a free ROB -> issue
             # case ('written'|  'idle') if (rob.isFree() & new_inst): self.__issue(rd, rs, rt)
             # if issued and ready to execute or already executing but not done -> execute
-            case  ('executing' | 'issued') if self.readyToExec(): self.__execute()
+            case  ('executing' | 'issued') if self.readyToExec(): 
+                self.__execute()
+                return False
             # if ready to write and there's an available bus, write
-            case  'executed' if can_write : self.__write() 
+            case  'executed' if can_write : 
+                self.__write() 
+                return True
 
 
 # class for the load and stor reservation stations
@@ -252,7 +257,7 @@ class LRS(ReservationStation):
           super().__init__(name, unit)
     
 
-     def __issue(self, rs, rd, offset):
+     def issue(self, rs, rd, offset):
          super().issue(rs)
          # add imm to addr field
          self.Addr = offset
@@ -295,16 +300,20 @@ class LRS(ReservationStation):
             # if free and there's a free ROB -> issue
             # case ('written'|  'idle') if (rob.isFree() & new_inst): self.__issue(rs,rd, offset)
             # if issued and ready to execute or already executing but not done -> execute
-            case  ('executing' | 'issued') if self.__readyToExec(): self.__execute()
+            case  ('executing' | 'issued') if self.__readyToExec(): 
+                self.__execute()
+                return False
             # if ready to write and there's an available bus, write
-            case  'executed' if can_write : self.__write()   
+            case  'executed' if can_write : 
+                self.__write()
+                return True   
 
 
 class SRS(ReservationStation):
     def __init__(self, name, unit):
           super().__init__(name, unit)
 
-    def __issue(self, rs,rt, offset):
+    def issue(self, rs,rt, offset):
         super().issue(rs)
 
         self.Addr = offset
@@ -355,16 +364,20 @@ class SRS(ReservationStation):
             # if free and there's a free ROB -> issue
             # case ('written'|  'idle') if (rob.isFree() & new_inst): self.__issue(rs,rd, offset)
             # if issued and ready to execute or already executing but not done -> execute
-            case  ('executing' | 'issued') if self.__readyToExec(): self.__execute()
+            case  ('executing' | 'issued') if self.__readyToExec(): 
+                self.__execute()
+                return False
             # if ready to write and there's an available bus, write
-            case  'executed' if can_write and self.__readyToWrite(): self.__write()   
+            case  'executed' if can_write and self.__readyToWrite(): 
+                self.__write()   
+                return True
  
 
 class BRS(ReservationStation):
     def __init__(self, name, unit):
           super().__init__(name, unit)
 
-    def __issue(self, rs, rt, pc, imm):
+    def issue(self, rs, rt, pc, imm):
         super().issue(rs)
 
         self.pc = pc
@@ -405,7 +418,10 @@ class BRS(ReservationStation):
             # if free and there's a free ROB -> issue
             # case ('written'|  'idle') if (rob.isFree() & new_inst): self.__issue(rs,rt,offset) 
             # if issued and ready to execute or already executing but not done -> execute
-            case  ('executing' | 'issued') if self.readyToExec(): self.__execute() 
+            case  ('executing' | 'issued') if self.readyToExec(): 
+                self.__execute()
+                return False
+
 
 
 class CRRS(ReservationStation):
@@ -413,10 +429,11 @@ class CRRS(ReservationStation):
     def __init__(self, name, unit):
           super().__init__(name, unit)
 
-    def __issue(self, pc, imm):
+    def issue(self, type, pc, imm):
 
         self.pc = pc
-        if(self.op == 'RET'):
+        self.type = type
+        if(self.type == 'RET'):
             super().issue(1)
             self.Dest = rob.addinst(be(self.op,'ret', None, None, False))  
         else:
@@ -426,11 +443,11 @@ class CRRS(ReservationStation):
             self.Dest = rob.addinst(be(self.op, 1, None, None, False))  
 
     def __readyToExec(self):
-        return self.op == 'CALL' or self.Qj == 0
+        return self.type == 'CALL' or self.Qj == 0
 
     def __execute(self):
          self.current_state = State.EXECUTED
-         if self.op == 'RET':
+         if self.type == 'RET':
              rob.setReady('ret', self.Vj)
              super().write()
              self.current_state = State.WRITTEN
@@ -453,9 +470,13 @@ class CRRS(ReservationStation):
             # if free and there's a free ROB -> issue
             # case ('written'|  'idle') if (rob.isFree() & new_inst): self.__issue(rs,rt,offset) 
             # if issued and ready to execute or already executing but not done -> execute
-            case  ('executing' | 'issued') if self.__readyToExec(): self.__execute()
+            case  ('executing' | 'issued') if self.__readyToExec(): 
+                self.__execute()
+                return False
             # if ready to write and there's an available bus, write
-            case  'executed' if can_write : self.__write()   
+            case  'executed' if can_write : 
+                self.__write()
+                return True   
 
     
  
