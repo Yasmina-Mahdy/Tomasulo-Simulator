@@ -148,8 +148,6 @@ offset = pc
 instcount = 0
 while(instcount != len(instList) or not ROB.Reorderbuffer.isEmpty()):
     can_issue = ROB.Reorderbuffer.isFree()
-    print(ROB.Reorderbuffer.isFree())
-
 
     # we have a free bus
     can_write = True
@@ -163,35 +161,34 @@ while(instcount != len(instList) or not ROB.Reorderbuffer.isEmpty()):
                 r.flush()
 
     # try to advance every RS
-    for r in RS:
-        # if an RS is writing, it blocks all proceeding RSs
-        # note that once can_write is set, we know that this rs is writing
-        prev_state = r.current_state
-        can_write = not r.proceed(can_write)
-        if r.current_state == 'written' and r.current_state != prev_state:
-            written = r
-        # handle writing
+        for r in RS:
+            # if an RS is writing, it blocks all proceeding RSs
+            # note that once can_write is set, we know that this rs is writing
+            if(r.isBusy()):
+                prev_state = r.current_state
+                can_write = not r.proceed(can_write)
+                if r.current_state == rs.State.WRITTEN and r.current_state != prev_state:
+                    written = r
+            # handle writing
     
 
     if not can_write:
         for r in RS:
-            if r.Qj == written.Dest:
-                r.Qj = 0
-                r.Vj = ROB.Reorderbuffer.getValueself(written.Dest, written.name)
+            if(r.isBusy()):
+                if r.Qj == written.Dest:
+                    r.Qj = 0
+                    r.Vj = ROB.Reorderbuffer.getValueself(written.Dest, written.name)
 
-            if r.Qk == written.Dest:
-                r.Qk = 0
-                r.Vk = ROB.Reorderbuffer.getValueself(written.Dest, written.name)
+                if r.Qk == written.Dest:
+                    r.Qk = 0
+                    r.Vk = ROB.Reorderbuffer.getValueself(written.Dest, written.name)
 
     print(cycles)
 
 
-    inst = instList[pc - offset] # how to deal with the offset for the list
-
-
     # trying to issue
-    if can_issue:
-
+    if can_issue and instcount < len(instList):
+        inst = instList[pc - offset] # how to deal with the offset for the list
         if issue(pc, inst):
             instcount += 1
             pc += 1
