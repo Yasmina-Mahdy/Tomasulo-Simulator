@@ -61,12 +61,12 @@ def instructions(inst):
         'rd': rd_temp,
         'rs': rs_temp,
         'rt': rt_temp,
-        'imm':imm_temp
+        'imm':imm_temp,
+        'state': 'idle',
         }
     return insts
 
 def parseinsts(inst,filename):
-    inst = []
     with open(filename, 'r') as file:
         for line in file:
             inst.append(line.strip())  # .strip() removes leading/trailing whitespace
@@ -84,3 +84,81 @@ def parseinsts(inst,filename):
 # handels the writes 
 # create the memory and the parsing function 
 # write it as a dictonary for the gui and pandas   
+
+
+def issue(pc, inst):
+    match inst.op:
+        case 'ADD' | 'ADDI':
+            rt = inst.rt if inst.op == 'ADD' else inst.imm
+            for r in RS:
+                if r.op == 'ADD' and not r.isBusy() and ROB.Reorderbuffer.isFree():
+                    r.issue(inst.rd, inst.rs, inst.rt, inst.op)
+                    return True
+            return False
+
+        case 'NAND':
+            for r in RS:
+                if r.op == 'NAND' and not r.isBusy() and ROB.Reorderbuffer.isFree():
+                    r.issue(inst.rd, inst.rs, inst.rt, inst.op)
+                    return True
+            return False
+        
+        case 'MUL':
+            for r in RS:
+                if r.op == 'MUL' and not r.isBusy() and ROB.Reorderbuffer.isFree():
+                    r.issue(inst.rd, inst.rs, inst.rt, inst.op)
+                    return True
+            return False
+        
+        case 'LOAD':
+            for r in RS:
+                if r.op == 'LOAD' and not r.isBusy() and ROB.Reorderbuffer.isFree():
+                    r.issue(inst.rs, inst.rd, inst.imm)
+                    return True
+            return False
+        
+        case 'STORE':
+            for r in RS:
+                if r.op == 'STORE' and not r.isBusy() and ROB.Reorderbuffer.isFree():
+                    r.issue(inst.rs, inst.rt, inst.imm)
+                    return True
+                
+            return False
+        case 'BEQ':
+            for r in RS:
+                if r.op == 'BEQ' and not r.isBusy() and ROB.Reorderbuffer.isFree():
+                    r.issue(inst.rs, inst.rt, pc, inst.imm)
+                    return True
+            return False
+        
+        case 'CALL' | 'RET':
+            for r in RS:
+                if r.op == 'CR' and not r.isBusy() and ROB.Reorderbuffer.isFree():
+                    r.issue(inst.op, pc, inst.imm)
+                    return True
+            return False
+
+instList = []
+RS = []
+cycles = 0
+pc = 0 # actually modify it to be the value passed at the beginning
+offset = pc
+while(instList and not ROB.Reorderbuffer.isEmpty()):
+
+    # we have a free bus
+    can_write = True
+
+    # try to advance every RS
+    for r in RS:
+        # if an RS is writing, it blocks all proceeding RSs
+        # note that once can_write is set, we know that this rs is writing
+        can_write = not r.proceed(can_write)
+        # handle writing
+
+    inst = instList[pc - offset] # how to deal with the offset for the list
+
+    # trying to issue
+    if(issue(pc, inst)):
+        pc += 1
+    
+    cycles += 1
