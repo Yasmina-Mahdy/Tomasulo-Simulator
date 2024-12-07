@@ -1,6 +1,6 @@
 from collections import deque
 from dataclasses import dataclass
-from ReservationStation import RegStation as rs
+from RegStation import RegStation as rs
 import RegFile 
 
 @dataclass

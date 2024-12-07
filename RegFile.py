@@ -12,21 +12,22 @@ class RegFile:
     regs = [0 for i in range(8)]
 
     @staticmethod
-    def regWrite(self, rd,  res):
+    def regWrite(rd,  res):
         if rd != 0:
             RegFile.regs[rd] = int16(res)
 
     @staticmethod
-    def regRead(self, rs):
+    def regRead(rs):
+
         return RegFile.regs[rs]
-    
+          
 
 class Memory:
     Mem = [0 for i in range(65537)]
 
     @staticmethod
-    def memWrite(self,addr,res):
+    def memWrite(addr,res):
         Memory.Mem[addr] = int16(res)
 
-    def memRead(self,addr):
+    def memRead(addr):
         return Memory.Mem[addr]
