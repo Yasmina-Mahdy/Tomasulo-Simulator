@@ -76,6 +76,7 @@ class ReservationStation():
         self.Dest = None
         self.Addr = None
         self.pc = None
+        self.rd = None
         
     # returns if the reservation station is busy
     def isBusy(self):
@@ -94,6 +95,7 @@ class ReservationStation():
         self.Dest = None
         self.Addr = None
         self.pc = None
+        self.rd = None
 
     # could be "extended" [not overriden] in child case if needed [make sure to call the super version in child regardless]
     def issue (self, rs):
@@ -144,7 +146,7 @@ class ReservationStation():
     # kind of the trickiest to implement since needs to access all other RSs + ROB
     # as well as check that no other instr is writing
     # extended in child class
-    def write(self, rd):
+    def write(self):
         # maybe return a signal, along with the value, and it can be handled outside?
         self.busy = False
         self.execution_cycles = 0 
@@ -175,6 +177,7 @@ class ALRS(ReservationStation):
 
         # call parent issue function
         super().issue(rs)
+        self.rd = rd
         self.type = type
 
         # if addi, assume rt has the imm
@@ -222,13 +225,13 @@ class ALRS(ReservationStation):
             self.current_state = State.EXECUTED
 
     # write implementation for Arith & logic
-    def __write(self, rd):
+    def __write(self):
         super().write()
 
         if(self.readyToWrite):
             self.readyToWrite = False
             self.current_state = State.WRITTEN
-            rob.setReady(rd,self.name,self.result)
+            rob.setReady(self.rd,self.name,self.result)
         # what to do...?
 
     # the function that is called from the main
@@ -239,13 +242,15 @@ class ALRS(ReservationStation):
             # if free and there's a free ROB -> issue
             # case ('written'|  'idle') if (rob.isFree() & new_inst): self.__issue(rd, rs, rt)
             # if issued and ready to execute or already executing but not done -> execute
-            case  ('executing' | 'issued') if self.readyToExec(): 
-                self.__execute()
-                return False
+            case  (State.EXECUTING | State.ISSUED): 
+                if self.readyToExec(): 
+                    self.__execute()
+                    return False
             # if ready to write and there's an available bus, write
-            case  'executed' if can_write : 
-                self.__write() 
-                return True
+            case  State.EXECUTED: 
+                if can_write : 
+                    self.__write() 
+                    return True
 
 
 # class for the load and stor reservation stations
@@ -255,6 +260,7 @@ class LRS(ReservationStation):
     
 
      def issue(self, rs, rd, offset):
+         self.rd = rd
          super().issue(rs)
          # add imm to addr field
          self.Addr = offset
@@ -281,13 +287,13 @@ class LRS(ReservationStation):
             self.result =  mem.memRead(self.Addr)
             self.readyToWrite = True
 
-     def __write(self, rd, offset):
+     def __write(self):
         super().write()
         # writing value from execution to the regs 
         if(self.readyToWrite):
             self.readyToWrite = False
             self.current_state = State.WRITTEN
-            rob.setReady(rd, self.name,self.result)
+            rob.setReady(self.rd, self.name,self.result)
         
 
      def proceed(self, can_write):
@@ -297,13 +303,15 @@ class LRS(ReservationStation):
             # if free and there's a free ROB -> issue
             # case ('written'|  'idle') if (rob.isFree() & new_inst): self.__issue(rs,rd, offset)
             # if issued and ready to execute or already executing but not done -> execute
-            case  ('executing' | 'issued') if self.__readyToExec(): 
-                self.__execute()
-                return False
+            case  (State.EXECUTING | State.ISSUED): 
+                if self.__readyToExec(): 
+                    self.__execute()
+                    return False
             # if ready to write and there's an available bus, write
-            case  'executed' if can_write : 
-                self.__write()
-                return True   
+            case  State.EXECUTED:
+                if can_write : 
+                    self.__write()
+                    return True   
 
 
 class SRS(ReservationStation):
@@ -342,17 +350,17 @@ class SRS(ReservationStation):
          self.current_execution_cycle += 1
 
          if self.current_execution_cycle == 2:
-             rob.setAddr('mem', self.Addr +  self.Vj)
+             rob.setAddr('mem', self.name, self.Addr +  self.Vj)
 
          elif self.current_execution_cycle == self.total_execution_cycles:
             # compute the result and signal that it is ready to be comitted     
             self.current_state = State.EXECUTED
 
-    def __write(self, rd, offset):
+    def __write(self, rd):
         super().write()
         # writing value from execution to the regs 
         self.current_state = State.WRITTEN
-        rob.setReady(rd,self.name, self.Vk)
+        rob.setReady('mem', self.name, self.Vk)
 
     def proceed(self, can_write):
         # looks at current state and if the conditions to move to next state are satisified
@@ -361,11 +369,11 @@ class SRS(ReservationStation):
             # if free and there's a free ROB -> issue
             # case ('written'|  'idle') if (rob.isFree() & new_inst): self.__issue(rs,rd, offset)
             # if issued and ready to execute or already executing but not done -> execute
-            case  ('executing' | 'issued') if self.__readyToExec(): 
+            case  (State.EXECUTING | State.ISSUED) if self.__readyToExec(): 
                 self.__execute()
                 return False
             # if ready to write and there's an available bus, write
-            case  'executed' if can_write and self.__readyToWrite(): 
+            case  State.EXECUTED if can_write and self.__readyToWrite(): 
                 self.__write()   
                 return True
  
@@ -400,7 +408,7 @@ class BRS(ReservationStation):
          super().write()
          if(self.Vj == self.Vk):
              # flushing handled in the main flush all the reservation stations
-             rob.setAddr(pc + 1 + self.Addr) 
+             rob.setAddr('BEQ', self.name, pc + 1 + self.Addr) 
              # assuming pc + 1 is implicit
         # writing value from execution to the regs 
          self.current_state = State.WRITTEN    
@@ -415,7 +423,7 @@ class BRS(ReservationStation):
             # if free and there's a free ROB -> issue
             # case ('written'|  'idle') if (rob.isFree() & new_inst): self.__issue(rs,rt,offset) 
             # if issued and ready to execute or already executing but not done -> execute
-            case  ('executing' | 'issued') if self.readyToExec(): 
+            case  (State.EXECUTING | State.ISSUED) if self.readyToExec(): 
                 self.__execute()
                 return False
 
@@ -445,13 +453,13 @@ class CRRS(ReservationStation):
     def __execute(self):
          self.current_state = State.EXECUTED
          if self.op == 'RET':
-             rob.setAddr('ret', self.Vj)
+             rob.setAddr('ret', self.name, self.Vj)
              rob.setReady('ret',self.name, self.Vj)
              super().write()
              self.current_state = State.WRITTEN
          else:
             self.result =  self.pc + 1
-            rob.setAddr(1, self.Addr)
+            rob.setAddr(1, self.name, self.Addr)
     
 
     def __write(self):
@@ -468,11 +476,11 @@ class CRRS(ReservationStation):
             # if free and there's a free ROB -> issue
             # case ('written'|  'idle') if (rob.isFree() & new_inst): self.__issue(rs,rt,offset) 
             # if issued and ready to execute or already executing but not done -> execute
-            case  ('executing' | 'issued') if self.__readyToExec(): 
+            case  (State.EXECUTING | State.ISSUED) if self.__readyToExec(): 
                 self.__execute()
                 return False
             # if ready to write and there's an available bus, write
-            case  'executed' if can_write : 
+            case  State.EXECUTED if can_write : 
                 self.__write()
                 return True   
 

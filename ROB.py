@@ -137,5 +137,3 @@ class Reorderbuffer:
     # flushes the ROB
     def flush():
         Reorderbuffer.buffer.clear()
-
-
