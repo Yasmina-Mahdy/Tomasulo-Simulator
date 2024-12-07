@@ -6,6 +6,7 @@ import RegFile
 @dataclass
 class buff_entry:
     Type: str
+    Unit: str
     Dest: str
     Value: int
     Addr: int
@@ -14,84 +15,116 @@ class buff_entry:
 
 class Reorderbuffer:
 
-    def __init__(self):
-        self.buffer = deque(maxlen = 6)
-        for b in self.buffer:
-            b.Ready = False
+    buffer = deque(maxlen = 6)
+    for b in buffer:
+        b.Ready = False
     
     @staticmethod
     # adds a new instruction to the end of the reorder buffer and returns its index
     # you create the entry 
-    def addInst(self, inst:buff_entry):
-        self.buffer.append(inst)
-        self.robEntry(inst.dest)
+    def addInst(inst:buff_entry):
+        Reorderbuffer.buffer.append(inst)
+        Reorderbuffer.robEntry(inst.dest)
 
     @staticmethod
     # removes and returns the instruction at the top of the reorder buffer
-    def commitInst(self,rd,res,addr,pc, offset):
-
-        #rs.freeReg(self.robEntry(dest))
-        match self.Type:
+    def commit():
+        match Reorderbuffer.buffer[0].Type:
             case 'AL' | 'LD':
-                RegFile.RegFile.regWrite(rd,res)
+                RegFile.RegFile.regWrite(Reorderbuffer.buffer[0].Dest,Reorderbuffer.buffer[0].Value)
             case 'SW':
-                RegFile.Memory.memWrite(addr,res)
-            case 'BEQ' | 'RET' | 'CALL':
-                return pc + offset
-        #rs.freeReg(self.robEntry(dest))
-        self.buffer.popleft()
+                RegFile.Memory.memWrite(Reorderbuffer.buffer[0].Addr,Reorderbuffer.buffer[0].Value)
+            case 'BEQ':
+                if Reorderbuffer.buffer[0].Value == 1:
+                    Reorderbuffer.flush()
+                return Reorderbuffer.buffer[0].Adder
+            case 'RET' | 'CALL':
+                Reorderbuffer.flush()
+                return Reorderbuffer.buffer[0].Adder
+            
+        rs.freeReg(Reorderbuffer.robEntry(Reorderbuffer.buffer[0].Dest))
+        Reorderbuffer.buffer.popleft()
     
     @staticmethod
     # returns the position of an instruction in the ROB
-    def robEntry(self, dest):
+    def robEntryself(dest,unit):
        index = 0
-       for inst in self.buffer:
+       for inst in Reorderbuffer.buffer:
             index += 1
-            if inst.Dest == dest:
+            if inst.Dest == dest and inst.Unit == unit:
                 return index
+
+    @staticmethod       
+    def robEntry(dest):
+       index = 0
+       for inst in Reorderbuffer.buffer:
+            index += 1
+            if inst.Dest == dest :
+                actindex = index
+       return actindex
     
 
     @staticmethod
     # changes the ready and value of an instruction 
-    def setReady(self, dest, value):
-        for inst in self.buffer:
-            if inst.Dest == dest:
+    def setReady(dest,unit, value):
+        for inst in Reorderbuffer.buffer:
+            if inst.Dest == dest and inst.Unit == unit:
                 inst.Ready = True
                 inst.Value = value
                 
-
-    def setAddr(self, dest, Addr):
-        for inst in self.buffer:
-            if inst.Dest == dest:
+    @staticmethod
+    def setAddr(dest, unit, Addr):
+        for inst in Reorderbuffer.buffer:
+            if inst.Dest == dest and inst.Unit == unit:
                 inst.Addr = Addr
 
     
     @staticmethod
     # returns the ready value
-    def isReady(self, dest):
-        for inst in self.buffer:
+    def isReady(dest):
+        for inst in Reorderbuffer.buffer:
             if inst.Dest == dest:
+                ready = inst.Ready
+        return ready
+            
+    @staticmethod        
+    def isReadyself(dest , unit):
+        for inst in Reorderbuffer.buffer:
+            if inst.Dest == dest and inst.Unit == unit:
                 return inst.Ready
         
 
     @staticmethod
-    def getValue(self, dest):
-        for inst in self.buffer:
+    def getValueself(dest, unit):
+        for inst in Reorderbuffer.buffer:
+            if inst.Dest == dest and inst.Unit == unit:
+                return Reorderbuffer.inst.Value
+            
+    @staticmethod
+    def getValue(dest):
+        for inst in Reorderbuffer.buffer:
             if inst.Dest == dest:
-                return self.inst.Value
+                val = Reorderbuffer.inst.Value
+        return val
             
 
     @staticmethod
     # checks if the buffer has free space or not
-    def isFree(self):
-        if len(self.buffer) == 6:
+    def isFree():
+        if len(Reorderbuffer.buffer) == 6:
             return False
         return True
     
+    def isEmpty():
+        if len(Reorderbuffer.buffer) == 0:
+            return True
+        else:
+            return False
+    
     @staticmethod
     # flushes the ROB
-    def flush(self):
-        for b in self.buffer:
+    def flush():
+        for b in Reorderbuffer.buffer:
             b = None
 
 
