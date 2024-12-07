@@ -23,7 +23,7 @@ class Reorderbuffer:
     # you create the entry 
     def addInst(inst:buff_entry):
         Reorderbuffer.buffer.append(inst)
-        return Reorderbuffer.robEntry(inst.dest)
+        return Reorderbuffer.robEntry(inst.Dest)
 
     @staticmethod
     # removes and returns the instruction at the top of the reorder buffer
@@ -45,8 +45,9 @@ class Reorderbuffer:
                         Reorderbuffer.flush()
                         rs.flushRegs()
                         return (True, Reorderbuffer.buffer[0].Addr)
-                    else:
-                        Reorderbuffer.buffer.popleft()
+                    
+                    Reorderbuffer.buffer.popleft()
+                    
                 case 'RET' | 'CALL':
                     if Reorderbuffer.buffer[0].Type == 'CALL':
                         RegFile.RegFile.regWrite(Reorderbuffer.buffer[0].Dest, Reorderbuffer.buffer[0].Value)
@@ -135,7 +136,6 @@ class Reorderbuffer:
     @staticmethod
     # flushes the ROB
     def flush():
-        for b in Reorderbuffer.buffer:
-            b = None
+        Reorderbuffer.buffer.clear()
 
 

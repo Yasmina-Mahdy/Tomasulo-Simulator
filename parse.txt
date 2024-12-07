@@ -1,1 +1,7 @@
-LOAD rA offset ( rB ) STORE rA offset ( rB ) BEQ rA rB offsetCALL labelRETADD rA rB rCADDI rA rB immNAND rA rB rCMUL rA rB rC
+LOAD r2 offset ( r1 ) 
+STORE r3 offset ( r4 ) 
+BEQ r2 r6 offset
+ADD r7 r0 r1
+ADDI r5 r0 23
+NAND r1 r4 r7
+MUL r3 r5 r1

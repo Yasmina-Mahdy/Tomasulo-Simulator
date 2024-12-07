@@ -1,6 +1,6 @@
 from enum import Enum
 from ROB import Reorderbuffer as rob
-import RegStation
+import RegStation as regst
 from ROB import buff_entry as be
 from RegFile import RegFile as RF
 from RegFile import Memory as mem
@@ -39,14 +39,11 @@ class FU(Enum):
               'op' : 'BEQ',
               'execution_cycles': 1
              }
-    CALL =   {
-              'op' : 'CALL',
+    CR =   {
+              'op' : 'CR',
               'execution_cycles': 1
              }
-    RET =   {
-              'op' : 'RET',
-              'execution_cycles': 1
-             }
+  
     
 # create enum for stages
 class State(Enum):
@@ -104,7 +101,7 @@ class ReservationStation():
         # in the child class, set ROB
         # stores any of the following that is needed
          # set rs
-        if(RegStation.isBusy(rs)):
+        if(regst.RegStation.isBusy(rs)):
             if(rob.isReady(rs)):
                 # get value from ROB
                 self.Vj = rob.getValue(rs)
@@ -170,8 +167,8 @@ class ReservationStation():
 class ALRS(ReservationStation): 
 
     # calls parent constructor
-    def __init__(self, name, unit):
-        super().__init__(name, unit)
+    def __init__(self, name, unit,op):
+        super().__init__(name, unit,op)
     
     # issue implementation for Arith & logic
     def issue (self, rd, rs, rt, type):
@@ -185,7 +182,7 @@ class ALRS(ReservationStation):
             self.Vk = rt
             self.Qk = 0
         else:    
-            if(RegStation.isBusy(rt)):
+            if(regst.RegStation.isBusy(rt)):
                 if(rob.isReady(rt)):
                     # get value from ROB
                     self.Vk = rob.getValue(rt)
@@ -201,9 +198,9 @@ class ALRS(ReservationStation):
                 self.Qk = 0
                 
         # create an entry in the ROB
-        self.Dest = rob.addInst(be('AL', rd, None, None, False))
+        self.Dest = rob.addInst(be('AL',self.name, rd, None, None, False))
         # set the regStat entry  
-        RegStation.setROB(rd, self.Dest)
+        regst.RegStation.setROB(rd, self.Dest)
 
 
     # execute implementation for Arith & logic
@@ -253,8 +250,8 @@ class ALRS(ReservationStation):
 
 # class for the load and stor reservation stations
 class LRS(ReservationStation):
-     def __init__(self, name, unit):
-          super().__init__(name, unit)
+     def __init__(self, name, unit,op):
+          super().__init__(name, unit,op)
     
 
      def issue(self, rs, rd, offset):
@@ -262,9 +259,9 @@ class LRS(ReservationStation):
          # add imm to addr field
          self.Addr = offset
          # create an entry in the ROB
-         self.Dest = rob.addinst(be('LD', rd, None, None, False))
+         self.Dest = rob.addInst(be('LD',self.name, rd, None, None, False))
          # set the regStat entry  
-         RegStation.setROB(rd, self.Dest)
+         regst.RegStation.setROB(rd, self.Dest)
          
      def __readyToExec(self):
             return (self.Qj == 0)
@@ -310,15 +307,15 @@ class LRS(ReservationStation):
 
 
 class SRS(ReservationStation):
-    def __init__(self, name, unit):
-          super().__init__(name, unit)
+    def __init__(self, name, unit, op):
+          super().__init__(name, unit, op)
 
     def issue(self, rs,rt, offset):
         super().issue(rs)
 
         self.Addr = offset
 
-        if(RegStation.isBusy(rt)):
+        if(regst.RegStation.isBusy(rt)):
             if(rob.isReady(rt)):
                 # get value from ROB
                 self.Vk = rob.getValue(rt)
@@ -330,7 +327,7 @@ class SRS(ReservationStation):
             self.Qk = 0
             self.Vk = RF.regRead(rt) 
 
-        self.Dest = rob.addinst(be('SW', 'mem', None, None, False))
+        self.Dest = rob.addInst(be('SW', self.name,'mem', None, None, False))
 
     def __readyToExec(self):
         return self.Qj == 0
@@ -374,8 +371,8 @@ class SRS(ReservationStation):
  
 
 class BRS(ReservationStation):
-    def __init__(self, name, unit):
-          super().__init__(name, unit)
+    def __init__(self, name, unit,op):
+          super().__init__(name, unit, op)
 
     def issue(self, rs, rt, pc, imm):
         super().issue(rs)
@@ -383,7 +380,7 @@ class BRS(ReservationStation):
         self.pc = pc
         self.Addr = imm
 
-        if(RegStation.isBusy(rt)):
+        if(regst.RegStation.isBusy(rt)):
             if(rob.isReady(rt)):
                 # get value from ROB
                 self.Vk = rob.getValue(rt)
@@ -396,7 +393,7 @@ class BRS(ReservationStation):
             self.Qk = 0
             self.Vk = RF.regRead(rt) 
 
-        self.Dest = rob.addinst(be(self.op, 'BEQ', None, None, False))
+        self.Dest = rob.addInst(be(self.op,self.name, 'BEQ', None, None, False))
     
 
     def __execute(self, pc):
@@ -426,8 +423,8 @@ class BRS(ReservationStation):
 
 class CRRS(ReservationStation):
 
-    def __init__(self, name, unit):
-          super().__init__(name, unit)
+    def __init__(self, name, unit, op):
+          super().__init__(name, unit, op)
 
     def issue(self, type, pc, imm):
 
@@ -435,12 +432,12 @@ class CRRS(ReservationStation):
         self.type = type
         if(self.type == 'RET'):
             super().issue(1)
-            self.Dest = rob.addinst(be(self.op,'ret', None, None, False))  
+            self.Dest = rob.addInst(be(self.op,self.name ,'ret', None, None, False))  
         else:
             self.current_state = State.ISSUED
             self.busy = True
             self.Addr = imm
-            self.Dest = rob.addinst(be(self.op, 1, None, None, False))  
+            self.Dest = rob.addInst(be(self.op,self.name, 1, None, None, False))  
 
     def __readyToExec(self):
         return self.type == 'CALL' or self.Qj == 0
