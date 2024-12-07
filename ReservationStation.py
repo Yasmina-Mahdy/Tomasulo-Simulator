@@ -1,36 +1,9 @@
 from enum import Enum
 from ROB import Reorderbuffer as rob
+import RegStation
 from ROB import buff_entry as be
 from RegFile import RegFile as RF
 from RegFile import Memory as mem
-
-
-class RegStation():
-    # create a list of reg entries for the RegStation
-    regs = [{"Reg" : i, "ROB" : 0} for i in range(16)]
-
-    # return if a certain reg is busy
-    @staticmethod
-    def isBusy(reg_num):
-        # return whether the ROB entry for this reg is not empty
-        return RegStation.regs[reg_num]['ROB'] != 0
-    
-    # set the ROB entry for a specific Reg
-    @staticmethod
-    def setROB(reg_num, ROB):
-        # reg[0] never has an ROB entry
-        if(reg_num == 0):
-            return
-        # set the ROB entry
-        RegStation.regs[reg_num]['ROB'] = ROB
-
-    # free a reg's ROB entry
-    @staticmethod
-    def freeReg(ROB):
-        # any reg waiting on the ROB entry is freed
-        for reg in RegStation.regs:
-            if reg['ROB'] == ROB:
-                reg['ROB'] = 0
 
 
 # add the rest
@@ -105,6 +78,7 @@ class ReservationStation():
         self.Qk = None
         self.Dest = None
         self.Addr = None
+        self.pc = None
         
     # returns if the reservation station is busy
     def isBusy(self):
@@ -122,6 +96,7 @@ class ReservationStation():
         self.Qk = None
         self.Dest = None
         self.Addr = None
+        self.pc = None
 
     # could be "extended" [not overriden] in child case if needed [make sure to call the super version in child regardless]
     def issue (self, rs):
@@ -259,12 +234,12 @@ class ALRS(ReservationStation):
         # what to do...?
 
     # the function that is called from the main
-    def proceed(self, ROB, rd, rs, rt, new_inst, can_write):
+    def proceed(self, can_write):
         # looks at current state and if the conditions to move to next state are satisified
         # call one of following function (issue, execute, write) [committing handles by ROB]
         match self.current_state:
             # if free and there's a free ROB -> issue
-            case ('written'|  'idle') if (rob.isFree() & new_inst): self.__issue(rd, rs, rt)
+            # case ('written'|  'idle') if (rob.isFree() & new_inst): self.__issue(rd, rs, rt)
             # if issued and ready to execute or already executing but not done -> execute
             case  ('executing' | 'issued') if self.readyToExec(): self.__execute()
             # if ready to write and there's an available bus, write
@@ -289,7 +264,7 @@ class LRS(ReservationStation):
      def __readyToExec(self):
             return (self.Qj == 0)
 
-     def __execute(self, offset):
+     def __execute(self):
          super().execute()
          # increment number of execution cycles
          self.current_execution_cycle += 1
@@ -313,14 +288,14 @@ class LRS(ReservationStation):
             rob.setReady(rd, self.result)
         
 
-     def proceed(self, ROB, rd, rs, rt, new_inst, offset,can_write):
+     def proceed(self, can_write):
         # looks at current state and if the conditions to move to next state are satisified
         # call one of following function (issue, execute, write) [committing handles by ROB]
         match self.current_state:
             # if free and there's a free ROB -> issue
-            case ('written'|  'idle') if (rob.isFree() & new_inst): self.__issue(rs,rd, offset)
+            # case ('written'|  'idle') if (rob.isFree() & new_inst): self.__issue(rs,rd, offset)
             # if issued and ready to execute or already executing but not done -> execute
-            case  ('executing' | 'issued') if self.__readyToExec(): self.__execute(offset)
+            case  ('executing' | 'issued') if self.__readyToExec(): self.__execute()
             # if ready to write and there's an available bus, write
             case  'executed' if can_write : self.__write()   
 
@@ -354,7 +329,7 @@ class SRS(ReservationStation):
     def __readyToWrite(self):
         return self.Qk == 0
     
-    def __execute(self, rs, offset):
+    def __execute(self):
          super().execute()
 
          # increment number of execution cycles
@@ -373,14 +348,14 @@ class SRS(ReservationStation):
         self.current_state = State.WRITTEN
         rob.setReady(rd, self.Vk)
 
-    def proceed(self, ROB, rd, rs, rt, new_inst, offset,can_write):
+    def proceed(self, can_write):
         # looks at current state and if the conditions to move to next state are satisified
         # call one of following function (issue, execute, write) [committing handles by ROB]
         match self.current_state:
             # if free and there's a free ROB -> issue
-            case ('written'|  'idle') if (rob.isFree() & new_inst): self.__issue(rs,rd, offset)
+            # case ('written'|  'idle') if (rob.isFree() & new_inst): self.__issue(rs,rd, offset)
             # if issued and ready to execute or already executing but not done -> execute
-            case  ('executing' | 'issued') if self.__readyToExec(): self.__execute(offset)
+            case  ('executing' | 'issued') if self.__readyToExec(): self.__execute()
             # if ready to write and there's an available bus, write
             case  'executed' if can_write and self.__readyToWrite(): self.__write()   
  
@@ -389,9 +364,10 @@ class BRS(ReservationStation):
     def __init__(self, name, unit):
           super().__init__(name, unit)
 
-    def __issue(self, rs, rt, imm):
+    def __issue(self, rs, rt, pc, imm):
         super().issue(rs)
 
+        self.pc = pc
         self.Addr = imm
 
         if(RegStation.isBusy(rt)):
@@ -410,7 +386,7 @@ class BRS(ReservationStation):
         self.Dest = rob.addinst(be(self.op, 'beq', None, None, False))
     
 
-    def __execute(self, pc, imm):
+    def __execute(self, pc):
          super().write()
          if(self.Vj == self.Vk):
              # flushing handled in the main flush all the reservation stations
@@ -422,14 +398,14 @@ class BRS(ReservationStation):
 
          
 
-    def proceed(self, ROB, rd, rs, rt, new_inst,imm,pc, can_write):
+    def proceed(self, can_write):
         # looks at current state and if the conditions to move to next state are satisified
         # call one of following function (issue, execute, write) [committing handles by ROB]
         match self.current_state:
             # if free and there's a free ROB -> issue
-            case ('written'|  'idle') if (rob.isFree() & new_inst): self.__issue(rs,rt,offset) 
+            # case ('written'|  'idle') if (rob.isFree() & new_inst): self.__issue(rs,rt,offset) 
             # if issued and ready to execute or already executing but not done -> execute
-            case  ('executing' | 'issued') if self.readyToExec(): self.__execute(pc,imm) 
+            case  ('executing' | 'issued') if self.readyToExec(): self.__execute() 
 
 
 class CRRS(ReservationStation):
@@ -437,8 +413,9 @@ class CRRS(ReservationStation):
     def __init__(self, name, unit):
           super().__init__(name, unit)
 
-    def __issue(self, imm):
+    def __issue(self, pc, imm):
 
+        self.pc = pc
         if(self.op == 'RET'):
             super().issue(1)
             self.Dest = rob.addinst(be(self.op,'ret', None, None, False))  
@@ -451,35 +428,34 @@ class CRRS(ReservationStation):
     def __readyToExec(self):
         return self.op == 'CALL' or self.Qj == 0
 
-    def __execute(self, pc, imm):
+    def __execute(self):
          self.current_state = State.EXECUTED
          if self.op == 'RET':
              rob.setReady('ret', self.Vj)
              super().write()
              self.current_state = State.WRITTEN
          else:
-            # getting the value stored in the memory at a specific address 
-            self.result =  pc + 1
+            self.result =  self.pc + 1
             rob.setAddr(1, self.Addr)
     
 
-    def __write(self, rd, offset):
+    def __write(self):
         super().write()
         # writing value from execution to the regs 
         self.current_state = State.WRITTEN
         rob.setReady(1, self.result)
     
 
-    def proceed(self, ROB, rd, rs, rt, new_inst,imm,pc, can_write):
+    def proceed(self, can_write):
         # looks at current state and if the conditions to move to next state are satisified
         # call one of following function (issue, execute, write) [committing handles by ROB]
         match self.current_state:
             # if free and there's a free ROB -> issue
-            case ('written'|  'idle') if (rob.isFree() & new_inst): self.__issue(rs,rt,offset) 
+            # case ('written'|  'idle') if (rob.isFree() & new_inst): self.__issue(rs,rt,offset) 
             # if issued and ready to execute or already executing but not done -> execute
-            case  ('executing' | 'issued') if self.__readyToExec(): self.__execute(pc,imm)
+            case  ('executing' | 'issued') if self.__readyToExec(): self.__execute()
             # if ready to write and there's an available bus, write
-            case  'executed' if can_write : self.__write(pc)   
+            case  'executed' if can_write : self.__write()   
 
     
  
