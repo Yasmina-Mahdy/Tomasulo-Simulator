@@ -148,6 +148,8 @@ offset = pc
 instcount = 0
 while(instcount != len(instList) or not ROB.Reorderbuffer.isEmpty()):
     can_issue = ROB.Reorderbuffer.isFree()
+    print(ROB.Reorderbuffer.isFree())
+
 
     # we have a free bus
     can_write = True
@@ -189,11 +191,11 @@ while(instcount != len(instList) or not ROB.Reorderbuffer.isEmpty()):
 
     # trying to issue
     if can_issue:
+
         if issue(pc, inst):
             instcount += 1
             pc += 1
 
-    
     
     cycles += 1
 
