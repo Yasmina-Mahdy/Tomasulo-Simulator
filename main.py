@@ -2,57 +2,58 @@ import ReservationStation as rs
 import ROB
 import RegFile as rf
 
-Load1 = rs.LRS('Load1','LOAD')
-Load2 = rs.LRS('Load2','LOAD')
-Store = rs.SRS('Store','STORE')
-BEQ = rs.BRS('BEQ','BEQ')
-CALLRET = rs.CRRS('CALLRET')
-ADD1 = rs.ALRS('ADD1','ADD')
-ADD2 = rs.ALRS('ADD2','ADD')
-ADD3 = rs.ALRS('ADD3','ADD')
-ADD4 = rs.ALRS('ADD4','ADD')
-NAND1 = rs.ALRS('NAND1','NAND')
-NAND2 = rs.ALRS('NAND2','NAND')
-MUL = rs.ALRS('MUL','MUL')
+Load1 = rs.LRS('Load1','LOAD','LOAD')
+Load2 = rs.LRS('Load2','LOAD','LOAD')
+Store = rs.SRS('Store','STORE','STORE')
+BEQ = rs.BRS('BEQ','BEQ','BEQ')
+CALLRET = rs.CRRS('CR', 'CR', 'CR')
+ADD1 = rs.ALRS('ADD1','ADD', 'ADD')
+ADD2 = rs.ALRS('ADD2','ADD', 'ADD')
+ADD3 = rs.ALRS('ADD3','ADD', 'ADD')
+ADD4 = rs.ALRS('ADD4','ADD', 'ADD')
+NAND1 = rs.ALRS('NAND1','NAND', 'NAND')
+NAND2 = rs.ALRS('NAND2','NAND', 'NAND')
+MUL = rs.ALRS('MUL','MUL', 'MUL')
 
 def instructions(inst):
 
     try:
         if inst[0] == 'RET' or inst[0] == 'CALL':
-            rd_temp = 'R1'
+            rd_temp = 1
         else:
-            rd_temp = inst[1]
+            rd_temp = int(inst[1].split('r')[1])
+        
             
     except:
         rd_temp = None
 
     try:
         if inst[0] == 'LOAD' or inst[0] == 'STORE':
-            rs_temp = inst[4]
+            rs_temp = int(inst[4].split('r')[1])
         elif inst[0] == 'BEQ':
-            rs_temp = inst[1]
+            rs_temp = int(inst[1].split('r')[1])
         else:
-            rs_temp = inst[2]
+            rs_temp = int(inst[2].split('r')[1])
     except:
         rs_temp = None
 
     try:
         if inst[0] == 'STORE':
-            rt_temp = inst[1]
+            rt_temp = int(inst[1].split('r')[1])
         elif inst[0] == 'BEQ':
-            rt_temp = inst[2]
+            rt_temp = int(inst[2].split('r')[1])
         else:
-            rt_temp = inst[3]
+            rt_temp = int(inst[3].split('r')[1])
     except:
         rt_temp = None
 
     try:
         if inst[0] == 'LOAD' or inst[0] == 'STORE':
-            imm_temp = inst[2]
+            imm_temp = int(inst[2])
         elif inst[0] == 'CALL':
-            imm_temp = inst[1]
+            imm_temp = int(inst[1])
         else:
-            imm_temp = inst[3]
+            imm_temp = int(inst[3])
     except:
         imm_temp = None
 
@@ -67,6 +68,7 @@ def instructions(inst):
     return insts
 
 def parseinsts(filename):
+    inst = []
     with open(filename, 'r') as file:
         for line in file:
             inst.append(line.strip())  # .strip() removes leading/trailing whitespace
@@ -138,18 +140,25 @@ def issue(pc, inst):
                     return True
             return False
 
-instList = parseinsts(filename)
+instList = parseinsts('parse.txt')
 RS = [Load1, Load2, Store, BEQ, CALLRET, ADD1, ADD2, ADD3, ADD4, NAND1, NAND2, MUL]
 cycles = 0
 pc = 0 # actually modify it to be the value passed at the beginning
 offset = pc
-while(instList and not ROB.Reorderbuffer.isEmpty()):
+instcount = 0
+while(instcount != len(instList) or not ROB.Reorderbuffer.isEmpty()):
     can_issue = ROB.Reorderbuffer.isFree()
 
     # we have a free bus
     can_write = True
 
-    ROB.Reorderbuffer.commit()
+    if cycles != 0:
+        flush, pc= ROB.Reorderbuffer.commit(pc)
+
+    # in case of Branch misprediction or call or return
+        if flush:
+            for r in RS:
+                r.flush()
 
     # try to advance every RS
     for r in RS:
@@ -162,16 +171,17 @@ while(instList and not ROB.Reorderbuffer.isEmpty()):
         # handle writing
     
 
-    for r in RS:
-        if r.Qj == written.Dest:
-            r.Qj = 0
-            r.Vj = ROB.Reorderbuffer.getValueself(written.Dest, written.name)
+    if not can_write:
+        for r in RS:
+            if r.Qj == written.Dest:
+                r.Qj = 0
+                r.Vj = ROB.Reorderbuffer.getValueself(written.Dest, written.name)
 
-        if r.Qk == written.Dest:
-            r.Qk = 0
-            r.Vk = ROB.Reorderbuffer.getValueself(written.Dest, written.name)
+            if r.Qk == written.Dest:
+                r.Qk = 0
+                r.Vk = ROB.Reorderbuffer.getValueself(written.Dest, written.name)
 
-    
+    print(cycles)
 
 
     inst = instList[pc - offset] # how to deal with the offset for the list
@@ -180,7 +190,10 @@ while(instList and not ROB.Reorderbuffer.isEmpty()):
     # trying to issue
     if can_issue:
         if issue(pc, inst):
+            instcount += 1
             pc += 1
+
+    
     
     cycles += 1
 
