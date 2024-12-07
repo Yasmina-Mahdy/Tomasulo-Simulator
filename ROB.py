@@ -4,10 +4,11 @@ from ReservationStation import RegStation as rs
 import RegFile 
 
 @dataclass
-class ROB:
+class buff_entry:
     Type: str
     Dest: str
     Value: int
+    Addr: int
     Ready: bool
 
 
@@ -20,13 +21,16 @@ class Reorderbuffer:
     
     @staticmethod
     # adds a new instruction to the end of the reorder buffer and returns its index
-    def addInst(self, inst:ROB):
+    # you create the entry 
+    def addInst(self, inst:buff_entry):
         self.buffer.append(inst)
-        self.instindex(inst.dest)
+        self.robEntry(inst.dest)
 
     @staticmethod
     # removes and returns the instruction at the top of the reorder buffer
     def commitInst(self,rd,res,addr,pc, offset):
+
+        #rs.freeReg(self.robEntry(dest))
         match self.Type:
             case 'AL' | 'LD':
                 RegFile.RegFile.regWrite(rd,res)
@@ -34,7 +38,8 @@ class Reorderbuffer:
                 RegFile.Memory.memWrite(addr,res)
             case 'BEQ' | 'RET' | 'CALL':
                 return pc + offset
-        return self.buffer.popleft()
+        #rs.freeReg(self.robEntry(dest))
+        self.buffer.popleft()
     
     @staticmethod
     # returns the position of an instruction in the ROB
@@ -48,12 +53,17 @@ class Reorderbuffer:
 
     @staticmethod
     # changes the ready and value of an instruction 
-    def setReady(self,dest, value):
+    def setReady(self, dest, value):
         for inst in self.buffer:
             if inst.Dest == dest:
                 inst.Ready = True
                 inst.Value = value
-                rs.freeReg(self.instindex(dest))
+                
+
+    def setAddr(self, dest, Addr):
+        for inst in self.buffer:
+            if inst.Dest == dest:
+                inst.Addr = Addr
 
     
     @staticmethod
@@ -84,6 +94,4 @@ class Reorderbuffer:
         for b in self.buffer:
             b = None
 
-    
 
-    
