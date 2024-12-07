@@ -1,6 +1,7 @@
 from collections import deque
 from dataclasses import dataclass
 from ReservationStation import RegStation as rs
+import RegFile 
 
 @dataclass
 class ROB:
@@ -25,11 +26,14 @@ class Reorderbuffer:
 
     @staticmethod
     # removes and returns the instruction at the top of the reorder buffer
-    def commitInst(self):
+    def commitInst(self,rd,res,addr,pc, offset):
         match self.Type:
-            case 'AL' | 'LD' # add value to register
-            case 'SW' # add to the memory
-            case 'BEQ' | 'RET' | 'CALL' # pc + offset
+            case 'AL' | 'LD':
+                RegFile.RegFile.regWrite(rd,res)
+            case 'SW':
+                RegFile.Memory.memWrite(addr,res)
+            case 'BEQ' | 'RET' | 'CALL':
+                return pc + offset
         return self.buffer.popleft()
     
     @staticmethod
@@ -79,3 +83,7 @@ class Reorderbuffer:
     def flush(self):
         for b in self.buffer:
             b = None
+
+    
+
+    
