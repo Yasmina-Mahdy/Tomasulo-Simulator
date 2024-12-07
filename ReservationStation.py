@@ -214,7 +214,7 @@ class ALRS(ReservationStation):
         self.current_execution_cycle += 1 
 
         # if this is the last cycle to be executed
-        if(self.current_execution_cycle == self.total_execution_cycles - 1):
+        if(self.current_execution_cycle == self.total_execution_cycles):
             # compute the result and signal that it is ready to be written     
             # fix the lower bit issues       
             match self.op:
@@ -277,7 +277,7 @@ class LRS(ReservationStation):
          if self.current_execution_cycle == 2:
              self.Addr +=  self.Vj
 
-         elif self.current_execution_cycle == self.total_execution_cycles - 1:
+         elif self.current_execution_cycle == self.total_execution_cycles:
             # compute the result and signal that it is ready to be written     
             self.current_state = State.EXECUTED
             # getting the value stored in the memory at a specific address 
@@ -347,7 +347,7 @@ class SRS(ReservationStation):
          if self.current_execution_cycle == 2:
              rob.setAddr('mem', self.Addr +  self.Vj)
 
-         elif self.current_execution_cycle == self.total_execution_cycles - 1:
+         elif self.current_execution_cycle == self.total_execution_cycles:
             # compute the result and signal that it is ready to be comitted     
             self.current_state = State.EXECUTED
 
@@ -461,7 +461,7 @@ class CRRS(ReservationStation):
         super().write()
         # writing value from execution to the regs 
         self.current_state = State.WRITTEN
-        rob.setReady(1, self.name,self.result)
+        rob.setReady(1, self.name, self.result)
     
 
     def proceed(self, can_write):

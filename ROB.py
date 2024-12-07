@@ -1,6 +1,6 @@
 from collections import deque
 from dataclasses import dataclass
-import RegStation as rs
+from RegStation import RegStation as rs
 import RegFile 
 
 @dataclass
@@ -16,38 +16,49 @@ class buff_entry:
 class Reorderbuffer:
 
     buffer = deque(maxlen = 6)
-    for b in buffer:
-        b.Ready = False
-    
+    commit_cycles = 0
+
     @staticmethod
     # adds a new instruction to the end of the reorder buffer and returns its index
     # you create the entry 
     def addInst(inst:buff_entry):
         Reorderbuffer.buffer.append(inst)
-        Reorderbuffer.robEntry(inst.dest)
+        return Reorderbuffer.robEntry(inst.dest)
 
     @staticmethod
     # removes and returns the instruction at the top of the reorder buffer
-    def commit():
-        match Reorderbuffer.buffer[0].Type:
-            case 'AL' | 'LD':
-                RegFile.RegFile.regWrite(Reorderbuffer.buffer[0].Dest,Reorderbuffer.buffer[0].Value)
-            case 'SW':
-                RegFile.Memory.memWrite(Reorderbuffer.buffer[0].Addr,Reorderbuffer.buffer[0].Value)
-            case 'BEQ':
-                if Reorderbuffer.buffer[0].Value == 1:
+    def commit(pc):
+        if(Reorderbuffer.buffer[0].Ready):
+            match Reorderbuffer.buffer[0].Type:
+                case 'AL' | 'LD':
+                    RegFile.RegFile.regWrite(Reorderbuffer.buffer[0].Dest,Reorderbuffer.buffer[0].Value)
+                    rs.freeReg(Reorderbuffer.robEntry(Reorderbuffer.buffer[0].Dest))
+                    Reorderbuffer.buffer.popleft()
+                case 'SW':
+                    commit_cycles += 1
+                    if(commit_cycles == 4):
+                        RegFile.Memory.memWrite(Reorderbuffer.buffer[0].Addr,Reorderbuffer.buffer[0].Value)
+                        commit_cycles = 0
+                        Reorderbuffer.buffer.popleft()
+                case 'BEQ':
+                    if Reorderbuffer.buffer[0].Value == True:
+                        Reorderbuffer.flush()
+                        rs.flushRegs()
+                        return (True, Reorderbuffer.buffer[0].Addr)
+                    else:
+                        Reorderbuffer.buffer.popleft()
+                case 'RET' | 'CALL':
+                    if Reorderbuffer.buffer[0].Type == 'CALL':
+                        RegFile.RegFile.regWrite(Reorderbuffer.buffer[0].Dest, Reorderbuffer.buffer[0].Value)
                     Reorderbuffer.flush()
-                return Reorderbuffer.buffer[0].Adder
-            case 'RET' | 'CALL':
-                Reorderbuffer.flush()
-                return Reorderbuffer.buffer[0].Adder
-            
-        rs.freeReg(Reorderbuffer.robEntry(Reorderbuffer.buffer[0].Dest))
-        Reorderbuffer.buffer.popleft()
+                    rs.flushRegs()
+                    return (True, Reorderbuffer.buffer[0].Addr)
+        return (False, pc)    
+        
     
     @staticmethod
     # returns the position of an instruction in the ROB
-    def robEntryself(dest,unit):
+    def robEntryself(dest, unit):
        index = 0
        for inst in Reorderbuffer.buffer:
             index += 1

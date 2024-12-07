@@ -24,3 +24,7 @@ class RegStation():
         for reg in RegStation.regs:
             if reg['ROB'] == ROB:
                 reg['ROB'] = 0
+
+    def flushRegs():
+        for reg in RegStation.regs:
+                reg['ROB'] = 0
