@@ -18,15 +18,5 @@ class RegFile:
 
     @staticmethod
     def regRead(self, rs):
+
         return RegFile.regs[rs]
-    
-
-class Memory:
-    Mem = [0 for i in range(65537)]
-
-    @staticmethod
-    def memWrite(self,addr,res):
-        Memory.Mem[addr] = int16(res)
-
-    def memRead(self,addr):
-        return Memory.Mem[addr]
