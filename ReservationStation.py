@@ -262,7 +262,7 @@ class LRS(ReservationStation):
          # add imm to addr field
          self.Addr = offset
          # create an entry in the ROB
-         self.Dest = rob.addinst(be(self.op, rd, None, None, False))
+         self.Dest = rob.addinst(be('LD', rd, None, None, False))
          # set the regStat entry  
          RegStation.setROB(rd, self.Dest)
          
@@ -330,7 +330,7 @@ class SRS(ReservationStation):
             self.Qk = 0
             self.Vk = RF.regRead(rt) 
 
-        self.Dest = rob.addinst(be(self.op, 'mem', None, None, False))
+        self.Dest = rob.addinst(be('SW', 'mem', None, None, False))
 
     def __readyToExec(self):
         return self.Qj == 0
@@ -396,7 +396,7 @@ class BRS(ReservationStation):
             self.Qk = 0
             self.Vk = RF.regRead(rt) 
 
-        self.Dest = rob.addinst(be(self.op, 'beq', None, None, False))
+        self.Dest = rob.addinst(be(self.op, 'BEQ', None, None, False))
     
 
     def __execute(self, pc):
