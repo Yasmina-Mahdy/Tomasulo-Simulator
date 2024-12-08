@@ -3,18 +3,6 @@ import ROB
 import RegFile as rf
 import pandas as pd
 
-def writemem(filename):
-    data = []
-    with open(filename, 'r') as file:
-        for line in file:
-            data.append(line.strip())
-    parsed_data = [ist.split(' ') for ist in data ]
-
-    for dat in parsed_data:
-        rf.Memory.memWrite(dat[0],dat[1])
-
-
-
 Load1 = rs.LRS('Load1','LOAD','LOAD')
 Load2 = rs.LRS('Load2','LOAD','LOAD')
 Store = rs.SRS('Store','STORE','STORE')
@@ -175,14 +163,13 @@ cycles = 0
 pc = 2 # actually modify it to be the value passed at the beginning
 offset = pc
 instcount = 0
-#writemem(filename)
 total_branch = 0
 branched = False
 branched_total = 0
 inst_cycles = []
 commited_inst = []
 print(instList)
-while(pc , len(instList) or not ROB.Reorderbuffer.isEmpty()):
+while(pc != len(instList) or not ROB.Reorderbuffer.isEmpty()):
     can_issue = ROB.Reorderbuffer.isFree()
     cycles += 1
 
