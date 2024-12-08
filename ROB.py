@@ -47,7 +47,7 @@ class Reorderbuffer:
                         Addr = Reorderbuffer.buffer[0].Addr
                         Reorderbuffer.flush()
                         rs.flushRegs()
-                        return (True, Addr)
+                        return (True, Addr,True)
                     
                     Reorderbuffer.buffer.popleft()
                     
@@ -57,8 +57,8 @@ class Reorderbuffer:
                         RegFile.RegFile.regWrite(Reorderbuffer.buffer[0].Dest, Reorderbuffer.buffer[0].Value)
                     Reorderbuffer.flush()
                     rs.flushRegs()
-                    return (True, Addr)
-        return (False, pc)    
+                    return (True, Addr, False)
+        return (False, pc, False)    
         
     
     @staticmethod
