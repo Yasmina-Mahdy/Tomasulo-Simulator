@@ -11,6 +11,7 @@ class buff_entry:
     Value: int
     Addr: int
     Ready: bool
+    index: int
 
 
 class Reorderbuffer:
@@ -22,8 +23,9 @@ class Reorderbuffer:
     # adds a new instruction to the end of the reorder buffer and returns its index
     # you create the entry 
     def addInst(inst:buff_entry):
+        inst.index = len(Reorderbuffer.buffer)
         Reorderbuffer.buffer.append(inst)
-        return Reorderbuffer.robEntryself(inst.Dest, inst.Unit)
+        return inst.index
 
     @staticmethod
     # removes and returns the instruction at the top of the reorder buffer
@@ -32,7 +34,7 @@ class Reorderbuffer:
             match Reorderbuffer.buffer[0].Type:
                 case 'AL' | 'LD':
                     RegFile.RegFile.regWrite(Reorderbuffer.buffer[0].Dest,Reorderbuffer.buffer[0].Value)
-                    rs.freeReg(Reorderbuffer.robEntry(Reorderbuffer.buffer[0].Dest))
+                    rs.freeReg(Reorderbuffer.buffer[0].index)
                     Reorderbuffer.buffer.popleft()
                 case 'SW':
                     Reorderbuffer.commit_cycles += 1

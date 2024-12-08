@@ -143,11 +143,11 @@ def issue(pc, inst):
 instList = parseinsts('parse.txt')
 RS = [Load1, Load2, Store, BEQ, CALLRET, ADD1, ADD2, ADD3, ADD4, NAND1, NAND2, MUL]
 cycles = 0
-pc = 0 # actually modify it to be the value passed at the beginning
+pc = 2 # actually modify it to be the value passed at the beginning
 offset = pc
 instcount = 0
 print(instList)
-while(pc - offset != len(instList) or not ROB.Reorderbuffer.isEmpty()):
+while(pc != len(instList) or not ROB.Reorderbuffer.isEmpty()):
     can_issue = ROB.Reorderbuffer.isFree()
 
     # we have a free bus
@@ -179,11 +179,11 @@ while(pc - offset != len(instList) or not ROB.Reorderbuffer.isEmpty()):
     if not free_bus:
         for r in RS:
             if(r.isBusy()):
-                if r.Qj == written.Dest:
+                if r.Qj == written.rd:
                     r.Qj = 0
                     r.Vj = ROB.Reorderbuffer.getValueself(written.rd, written.name)
 
-                if r.Qk == written.Dest:
+                if r.Qk == written.rd:
                     r.Qk = 0
                     r.Vk = ROB.Reorderbuffer.getValueself(written.rd, written.name)
 
@@ -191,8 +191,8 @@ while(pc - offset != len(instList) or not ROB.Reorderbuffer.isEmpty()):
 
 
     # trying to issue
-    if can_issue and pc - offset < len(instList):
-        inst = instList[pc - offset] # how to deal with the offset for the list
+    if can_issue and pc < len(instList):
+        inst = instList[pc] # how to deal with the offset for the list
         if issue(pc, inst):
             instcount += 1
             pc += 1

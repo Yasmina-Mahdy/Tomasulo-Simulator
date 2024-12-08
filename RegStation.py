@@ -1,6 +1,6 @@
 class RegStation():
     # create a list of reg entries for the RegStation
-    regs = [{"Reg" : i, "ROB" : 0} for i in range(16)]
+    regs = [{"Reg" : i, "ROB" : 0} for i in range(8)]
 
     # return if a certain reg is busy
     @staticmethod

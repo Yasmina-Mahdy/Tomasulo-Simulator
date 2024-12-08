@@ -202,7 +202,7 @@ class ALRS(ReservationStation):
                 self.Qk = 0
                 
         # create an entry in the ROB
-        self.Dest = rob.addInst(be('AL',self.name, rd, None, None, False))
+        self.Dest = rob.addInst(be('AL',self.name, rd, None, None, False, None))
         # set the regStat entry  
         regst.RegStation.setROB(rd, self.Dest)
 
@@ -266,7 +266,7 @@ class LRS(ReservationStation):
          # add imm to addr field
          self.Addr = offset
          # create an entry in the ROB
-         self.Dest = rob.addInst(be('LD',self.name, rd, None, None, False))
+         self.Dest = rob.addInst(be('LD',self.name, rd, None, None, False, None))
          # set the regStat entry  
          regst.RegStation.setROB(rd, self.Dest)
          
@@ -336,7 +336,7 @@ class SRS(ReservationStation):
             self.Qk = 0
             self.Vk = RF.regRead(rt) 
 
-        self.Dest = rob.addInst(be('SW', self.name,'mem', None, None, False))
+        self.Dest = rob.addInst(be('SW', self.name,'mem', None, None, False,None))
 
     def __readyToExec(self):
         return self.Qj == 0
@@ -399,7 +399,7 @@ class BRS(ReservationStation):
             self.Qk = 0
             self.Vk = RF.regRead(rt) 
 
-        self.Dest = rob.addInst(be(self.op,self.name, 'BEQ', None, None, False))
+        self.Dest = rob.addInst(be(self.op,self.name, 'BEQ', None, None, False,None))
     
 
     def __execute(self):
@@ -438,19 +438,19 @@ class CRRS(ReservationStation):
         self.type = type
         if(self.type == 'RET'):
             super().issue(1)
-            self.Dest = rob.addInst(be(self.op,self.name ,'ret', None, None, False))  
+            self.Dest = rob.addInst(be(self.type,self.name ,'ret', None, None, False, None))  
         else:
             self.current_state = State.ISSUED
             self.busy = True
             self.Addr = imm
-            self.Dest = rob.addInst(be(self.op,self.name, 1, None, None, False))  
+            self.Dest = rob.addInst(be(self.type,self.name, 1, None, None, False, None))  
 
     def __readyToExec(self):
         return self.type == 'CALL' or self.Qj == 0
 
     def __execute(self):
          self.current_state = State.EXECUTED
-         if self.op == 'RET':
+         if self.type == 'RET':
              rob.setAddr('ret', self.name, self.Vj)
              rob.setReady('ret',self.name, self.Vj)
              super().write()
