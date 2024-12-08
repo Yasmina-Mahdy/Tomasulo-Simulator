@@ -32,21 +32,22 @@ class Reorderbuffer:
 
     @staticmethod
     # removes and returns the instruction at the top of the reorder buffer
-    def commit(pc):
+    def commit(pc, cycle):
         if(not Reorderbuffer.isEmpty() and Reorderbuffer.buffer[0].Ready):
             match Reorderbuffer.buffer[0].Type:
                 case 'AL' | 'LD':
                     RegFile.RegFile.regWrite(Reorderbuffer.buffer[0].Dest, Reorderbuffer.buffer[0].Value)
                     rs.freeReg(Reorderbuffer.buffer[0].index, Reorderbuffer.buffer[0].Unit)
                     Reorderbuffer.buffer.popleft()
-                    return (False, pc, False,cycle,True)
+                    return (False, pc, False, cycle,True)
                 case 'SW':
                     Reorderbuffer.commit_cycles += 1
                     if(Reorderbuffer.commit_cycles == Reorderbuffer.store_cycles):
                         RegFile.Memory.memWrite(Reorderbuffer.buffer[0].Addr,Reorderbuffer.buffer[0].Value)
                         Reorderbuffer.commit_cycles = 0
                         Reorderbuffer.buffer.popleft()
-                    return (False, pc, False,cycle, True)
+                        return (False, pc, False,cycle, True)
+                    return (False, pc, False,cycle, False)
                 case 'BEQ':
                     if Reorderbuffer.buffer[0].Value == True:
                         Addr = Reorderbuffer.buffer[0].Addr
@@ -54,10 +55,10 @@ class Reorderbuffer:
                         rs.flushRegs()
 
                         return (True, Addr,True,cycle, True)
-
-                    
                     Reorderbuffer.buffer.popleft()
+                    return (False, pc, False, cycle, True)
                     
+                
                 case 'RET' | 'CALL':
                     Addr = Reorderbuffer.buffer[0].Addr
                     if Reorderbuffer.buffer[0].Type == 'CALL':

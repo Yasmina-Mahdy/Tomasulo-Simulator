@@ -221,9 +221,9 @@ while(pc < len(instList) or not ROB.Reorderbuffer.isEmpty()):
     if cycles != 1:
 
         flush, pc, branched, temp_cycle, commited = ROB.Reorderbuffer.commit(pc,cycles)
-        if commited:
+        if commited and inst_cycles:
             inst_cycles[0]['Commiting cycle'] = temp_cycle
-            if inst_cycles[0]['op'] == 'BEQ'
+            if inst_cycles[0]['op'] == 'BEQ':
                 total_branch += 1
             comm = inst_cycles.pop(0).copy()
             commited_inst.append(comm)
@@ -244,7 +244,7 @@ while(pc < len(instList) or not ROB.Reorderbuffer.isEmpty()):
     for r in RS:
         # if an RS is writing, it blocks all proceeding RSs
         # note that once can_write is set, we know that this rs is writing
-        print(r.name)
+
         if(r.isBusy()):
             prev_state = r.current_state
             if free_bus:
@@ -252,24 +252,23 @@ while(pc < len(instList) or not ROB.Reorderbuffer.isEmpty()):
             else:
                 r.proceed(free_bus)
 
-            print(r.current_state)
             if r.current_state == rs.State.WRITTEN and r.current_state != prev_state:
                 for inst in inst_cycles:
                     if inst['unit'] == r.name:
-                        inst['Written cycle'] = round(cycles)
+                        inst['Written cycle'] = cycles
                 written = r
 
             if r.current_state == rs.State.EXECUTING and r.current_state != prev_state:
                 for inst in inst_cycles:
                     if inst['unit'] == r.name:
-                        inst['Started Execution cycle'] = round(cycles)
+                        inst['Started Execution cycle'] = cycles
 
 
             if r.current_state == rs.State.EXECUTED and r.current_state != prev_state:
-                if r.op in OPs:
+                if r.total_execution_cycles == 1:
                     for inst in inst_cycles:
                         if inst['unit'] == r.name:
-                            inst ['Started Execution cycle'] = round(cycles)
+                            inst ['Started Execution cycle'] = cycles
 
                 for inst in inst_cycles:
                         if inst['unit'] == r.name:
@@ -296,7 +295,6 @@ while(pc < len(instList) or not ROB.Reorderbuffer.isEmpty()):
             
         iss, unit = issue(pc, inst)
         if iss:
-            print(inst['op'])
             inst_cycles.append(inst_cyc(inst['op'],inst['rd'],inst['rs'],inst['rt'],inst['imm'],cycles, None, None, None, None,unit))
             
             pc += 1
@@ -305,6 +303,9 @@ while(pc < len(instList) or not ROB.Reorderbuffer.isEmpty()):
 
 print(f"The total number of cycles: {cycles}")
 print(f"The IPC: {instcount / cycles}")
-print(f"The branch misprediction percentage: {(branched_total/total_branch) * 100}")
+if total_branch != 0:
+    print(f"The branch misprediction percentage: {(branched_total/total_branch) * 100}")
+else:
+    print(f"The branch misprediction percentage: No Branches encountered")
 df = pd.DataFrame(commited_inst)
 print(df)

@@ -342,6 +342,7 @@ class SRS(ReservationStation):
     def __init__(self, name, unit, op, addr_cycles, cycles):
           super().__init__(name, unit, op)
           self.addr_cycles = addr_cycles
+          self.total_execution_cycles = addr_cycles
           rob.setStoreCycles(cycles)
 
     def issue(self, rs,rt, offset,pc):
@@ -507,7 +508,7 @@ class CRRS(ReservationStation):
                 rob.setAddr('ret', self.name, self.Vj)
                 rob.setReady('ret',self.name, self.Vj)
                 super().write()
-                self.current_state = State.WRITTEN
+                self.current_state = State.EXECUTED
             else:
                 self.result =  int16(self.pc + 1)
                 rob.setAddr(1, self.name, self.Addr)
@@ -533,7 +534,8 @@ class CRRS(ReservationStation):
                     self.__execute()
                 return False
             # if ready to write and there's an available bus, write
-            case  State.EXECUTED if can_write : 
-                self.__write()
+            case State.EXECUTED if self.type == 'CALL':
+                if can_write : 
+                    self.__write()
                 return True
         return False   
