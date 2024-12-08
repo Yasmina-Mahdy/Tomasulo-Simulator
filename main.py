@@ -141,15 +141,11 @@ def issue(pc, inst):
             return False
 
 instList = parseinsts('parse.txt')
-print(instList)
 RS = [Load1, Load2, Store, BEQ, CALLRET, ADD1, ADD2, ADD3, ADD4, NAND1, NAND2, MUL]
 cycles = 0
 pc = 2 # actually modify it to be the value passed at the beginning
 offset = pc
 instcount = 0
-total_branch = 0
-branched = False
-branched_total = 0
 print(instList)
 while(pc != len(instList) or not ROB.Reorderbuffer.isEmpty()):
     can_issue = ROB.Reorderbuffer.isFree()
@@ -158,15 +154,12 @@ while(pc != len(instList) or not ROB.Reorderbuffer.isEmpty()):
     free_bus = True
 
     if cycles != 0:
-        flush, pc, branched= ROB.Reorderbuffer.commit(pc)
+        flush, pc= ROB.Reorderbuffer.commit(pc)
 
     # in case of Branch misprediction or call or return
         if flush:
             for r in RS:
                 r.flush()
-
-    if branched:
-        branched_total += 1
 
     # try to advance every RS
         for r in RS:
@@ -200,17 +193,10 @@ while(pc != len(instList) or not ROB.Reorderbuffer.isEmpty()):
     # trying to issue
     if can_issue and pc < len(instList):
         inst = instList[pc] # how to deal with the offset for the list
-        if inst['op'] == 'BEQ':
-            total_branch += 1
         if issue(pc, inst):
             instcount += 1
             pc += 1
 
     
     cycles += 1
-
-
-print(f"The total number of cycles: {cycles}")
-print(f"The IPC: {instcount / cycles}")
-print(f"The branch misprediction percentage: {(branched_total/total_branch) * 100}")
 
