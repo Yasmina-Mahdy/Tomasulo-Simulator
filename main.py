@@ -16,27 +16,52 @@ def writemem(filename):
 
 
 # INPUTS HERE
-pc = 0
-path = 'parse.txt'
-# input the memoryy
-# unit counts
-load_units = 2
-store_units = 1
-beq_units = 1
-cr_units = 1
-add_units = 4
-nand_units = 4
-mul_units = 1
-# cycle lengths
-load_addr_cycles = 2
-load_cycles = 4
-store_addr_cycles = 2
-store_cycles = 4
-beq_cycles = 1
-cr_cycles = 1
-add_cycles = 2
-nand_cycles = 1
-mul_cycles = 8
+path = input("Enter the name of the file that has the program: ")
+memfile = input("Enter the name of the file that has the memory content: ")
+default = input("Enter y for default or n new values: ")
+
+if default == 'y' or 'Y':
+    pc = 0
+    # input the memoryy
+    # unit counts
+    load_units = 2
+    store_units = 1
+    beq_units = 1
+    cr_units = 1
+    add_units = 4
+    nand_units = 4
+    mul_units = 1
+    # cycle lengths
+    load_addr_cycles = 2
+    load_cycles = 4
+    store_addr_cycles = 2
+    store_cycles = 4
+    beq_cycles = 1
+    cr_cycles = 1
+    add_cycles = 2
+    nand_cycles = 1
+    mul_cycles = 8
+    buff_size = 6
+else:
+    load_units = input("Enter load units number: ")
+    store_units = input("Enter store units number: ")
+    beq_units = input("Enter beq units number: ")
+    cr_units = input("Enter call/ret units number: ")
+    add_units = input("Enter add units number: ")
+    nand_units = input("Enter nand units number: ")
+    mul_units = input("Enter mul units number: ")
+    load_addr_cycles = input("Enter number of cycles for load address computation: ")
+    load_cycles = input("Enter number of cycles for load: ")
+    store_addr_cycles = input("Enter number of cycles for store address computation: ")
+    store_cycles = input("Enter number of cycles for store: ")
+    beq_cycles = input("Enter number of cycles for beq: ")
+    cr_cycles = input("Enter number of cycles for call/ret: ")
+    add_cycles = input("Enter number of cycles for add: ")
+    nand_cycles = input("Enter number of cycles for nand: ")
+    mul_cycles = input("Enter number of cycles for mul: ")
+    buff_size = input("Enter size of buffer: ")
+ 
+ROB.creat_buff(buff_size)
 
 RS = []
 for i in range(load_units):
@@ -202,6 +227,7 @@ def issue(pc, inst):
 
 
 instList = parseinsts(path)
+writemem(memfile)
 # add condition here
 OPs =['NAND', 'CR', 'BEQ']
 cycles = 0

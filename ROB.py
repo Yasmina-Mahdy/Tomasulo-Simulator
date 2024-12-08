@@ -16,7 +16,6 @@ class buff_entry:
 
 class Reorderbuffer:
 
-    buffer = deque(maxlen = 6)
     commit_cycles = 0
     store_cycles = 4
     index = 1
@@ -153,3 +152,7 @@ class Reorderbuffer:
     @staticmethod
     def setStoreCycles(count):
         Reorderbuffer.store_cycles = count
+
+    @staticmethod
+    def creat_buff(size):
+         Reorderbuffer.buffer = deque(maxlen = size)
