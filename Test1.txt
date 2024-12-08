@@ -1,0 +1,12 @@
+ADD r2 r0 r1
+RET
+CALL 0
+ADDI r5 r0 23
+NAND r1 r4 r7
+LOAD r2 10 ( r1 ) 
+STORE r3 20 ( r4 ) 
+BEQ r0 r0 1
+ADD r7 r0 r1
+ADDI r5 r0 23
+NAND r1 r4 r7
+MUL r3 r5 r1

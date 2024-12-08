@@ -18,27 +18,30 @@ class Reorderbuffer:
 
     buffer = deque(maxlen = 6)
     commit_cycles = 0
+    store_cycles = 4
+    index = 1
 
     @staticmethod
     # adds a new instruction to the end of the reorder buffer and returns its index
     # you create the entry 
     def addInst(inst:buff_entry):
-        inst.index = len(Reorderbuffer.buffer)
+        inst.index = Reorderbuffer.index
         Reorderbuffer.buffer.append(inst)
+        Reorderbuffer.index += 1
         return inst.index
 
     @staticmethod
     # removes and returns the instruction at the top of the reorder buffer
     def commit(pc):
-        if(Reorderbuffer.buffer[0].Ready):
+        if(not Reorderbuffer.isEmpty() and Reorderbuffer.buffer[0].Ready):
             match Reorderbuffer.buffer[0].Type:
                 case 'AL' | 'LD':
-                    RegFile.RegFile.regWrite(Reorderbuffer.buffer[0].Dest,Reorderbuffer.buffer[0].Value)
-                    rs.freeReg(Reorderbuffer.buffer[0].index)
+                    RegFile.RegFile.regWrite(Reorderbuffer.buffer[0].Dest, Reorderbuffer.buffer[0].Value)
+                    rs.freeReg(Reorderbuffer.buffer[0].index, Reorderbuffer.buffer[0].Unit)
                     Reorderbuffer.buffer.popleft()
                 case 'SW':
                     Reorderbuffer.commit_cycles += 1
-                    if(Reorderbuffer.commit_cycles == 4):
+                    if(Reorderbuffer.commit_cycles == Reorderbuffer.store_cycles):
                         RegFile.Memory.memWrite(Reorderbuffer.buffer[0].Addr,Reorderbuffer.buffer[0].Value)
                         Reorderbuffer.commit_cycles = 0
                         Reorderbuffer.buffer.popleft()
@@ -47,7 +50,7 @@ class Reorderbuffer:
                         Addr = Reorderbuffer.buffer[0].Addr
                         Reorderbuffer.flush()
                         rs.flushRegs()
-                        return (True, Addr)
+                        return (True, Addr,True)
                     
                     Reorderbuffer.buffer.popleft()
                     
@@ -57,8 +60,8 @@ class Reorderbuffer:
                         RegFile.RegFile.regWrite(Reorderbuffer.buffer[0].Dest, Reorderbuffer.buffer[0].Value)
                     Reorderbuffer.flush()
                     rs.flushRegs()
-                    return (True, Addr)
-        return (False, pc)    
+                    return (True, Addr, False)
+        return (False, pc, False)    
         
     
     @staticmethod
@@ -67,7 +70,7 @@ class Reorderbuffer:
        index = 0
        for inst in Reorderbuffer.buffer:
             if inst.Dest == dest and inst.Unit == unit:
-                return index
+                return inst.index
             index += 1
 
     @staticmethod       
@@ -75,7 +78,7 @@ class Reorderbuffer:
        index = 0
        for inst in Reorderbuffer.buffer:
             if inst.Dest == dest :
-                actindex = index
+                actindex = inst.index
             index += 1
        return actindex
     
@@ -141,3 +144,7 @@ class Reorderbuffer:
     # flushes the ROB
     def flush():
         Reorderbuffer.buffer.clear()
+
+    @staticmethod
+    def setStoreCycles(count):
+        Reorderbuffer.store_cycles = count

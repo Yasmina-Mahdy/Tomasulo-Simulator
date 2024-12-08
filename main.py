@@ -2,18 +2,50 @@ import ReservationStation as rs
 import ROB
 import RegFile as rf
 
-Load1 = rs.LRS('Load1','LOAD','LOAD')
-Load2 = rs.LRS('Load2','LOAD','LOAD')
-Store = rs.SRS('Store','STORE','STORE')
-BEQ = rs.BRS('BEQ','BEQ','BEQ')
-CALLRET = rs.CRRS('CR', 'CR', 'CR')
-ADD1 = rs.ALRS('ADD1','ADD', 'ADD')
-ADD2 = rs.ALRS('ADD2','ADD', 'ADD')
-ADD3 = rs.ALRS('ADD3','ADD', 'ADD')
-ADD4 = rs.ALRS('ADD4','ADD', 'ADD')
-NAND1 = rs.ALRS('NAND1','NAND', 'NAND')
-NAND2 = rs.ALRS('NAND2','NAND', 'NAND')
-MUL = rs.ALRS('MUL','MUL', 'MUL')
+# INPUTS HERE
+pc = 0
+path = 'parse.txt'
+# input the memoryy
+# unit counts
+load_units = 2
+store_units = 1
+beq_units = 1
+cr_units = 1
+add_units = 4
+nand_units = 4
+mul_units = 1
+# cycle lengths
+load_addr_cycles = 2
+load_cycles = 4
+store_addr_cycles = 2
+store_cycles = 4
+beq_cycles = 1
+cr_cycles = 1
+add_cycles = 2
+nand_cycles = 1
+mul_cycles = 8
+
+RS = []
+for i in range(load_units):
+    RS.append(rs.LRS(f'Load{i+1}','LOAD','LOAD', load_addr_cycles, load_cycles))
+
+for i in range(store_units):
+    RS.append(rs.SRS(f'Store{i+1}','STORE','STORE', store_addr_cycles, store_cycles))
+
+for i in range(beq_units):
+    RS.append(rs.BRS(f'BEQ{i+1}','BEQ','BEQ', beq_cycles))
+
+for i in range(cr_units):
+    RS.append(rs.CRRS(f'CR{i+1}', 'CR', 'CR', cr_cycles))
+
+for i in range(add_units):
+    RS.append(rs.ALRS(f'ADD{i+1}','ADD', 'ADD', add_cycles))
+
+for i in range(nand_units):
+    RS.append(rs.ALRS(f'NAND{i+1}','NAND', 'NAND', nand_cycles))
+
+for i in range(mul_units):
+    RS.append(rs.ALRS(f'MUL{i+1}','MUL', 'MUL', mul_cycles))
 
 def instructions(inst):
 
@@ -140,63 +172,74 @@ def issue(pc, inst):
                     return True
             return False
 
-instList = parseinsts('parse.txt')
-RS = [Load1, Load2, Store, BEQ, CALLRET, ADD1, ADD2, ADD3, ADD4, NAND1, NAND2, MUL]
+instList = parseinsts(path)
 cycles = 0
-pc = 2 # actually modify it to be the value passed at the beginning
-offset = pc
 instcount = 0
+total_branch = 0
+branched = False
+branched_total = 0
 print(instList)
-while(pc != len(instList) or not ROB.Reorderbuffer.isEmpty()):
+while(pc < len(instList) or not ROB.Reorderbuffer.isEmpty()):
+    cycles += 1
+    print(cycles)
     can_issue = ROB.Reorderbuffer.isFree()
-
     # we have a free bus
     free_bus = True
 
-    if cycles != 0:
-        flush, pc= ROB.Reorderbuffer.commit(pc)
+    if cycles != 1:
+        flush, pc, branched= ROB.Reorderbuffer.commit(pc)
 
     # in case of Branch misprediction or call or return
         if flush:
+            can_issue = False
             for r in RS:
                 r.flush()
 
+    if branched:
+        branched_total += 1
+
     # try to advance every RS
-        for r in RS:
-            # if an RS is writing, it blocks all proceeding RSs
-            # note that once can_write is set, we know that this rs is writing
-            if(r.isBusy()):
-                prev_state = r.current_state
-                if free_bus:
-                    free_bus = not r.proceed(free_bus)
-                else:
-                    r.proceed(free_bus)
-                if r.current_state == rs.State.WRITTEN and r.current_state != prev_state:
-                    written = r
-            # handle writing
+    for r in RS:
+        # if an RS is writing, it blocks all proceeding RSs
+        # note that once can_write is set, we know that this rs is writing
+        if(r.isBusy()):
+            prev_state = r.current_state
+            if free_bus:
+                free_bus = not r.proceed(free_bus)
+            else:
+                r.proceed(free_bus)
+            if r.current_state == rs.State.WRITTEN and r.current_state != prev_state:
+                written = r
+        # handle writing
     
 
     if not free_bus:
         for r in RS:
             if(r.isBusy()):
-                if r.Qj == written.rd:
+                if r.Qj == written.Dest:
                     r.Qj = 0
                     r.Vj = ROB.Reorderbuffer.getValueself(written.rd, written.name)
 
-                if r.Qk == written.rd:
+                if r.Qk == written.Dest:
                     r.Qk = 0
                     r.Vk = ROB.Reorderbuffer.getValueself(written.rd, written.name)
 
-    print(cycles)
 
 
     # trying to issue
     if can_issue and pc < len(instList):
         inst = instList[pc] # how to deal with the offset for the list
+        if inst['op'] == 'BEQ':
+            # total_branch += 1
+            pass
         if issue(pc, inst):
-            instcount += 1
+            # print(f'issued {inst['op']} at cycle {cycles}')
+            # instcount += 1
             pc += 1
 
-    
-    cycles += 1
+
+
+print(f"The total number of cycles: {cycles}")
+print(f"The IPC: {instcount / cycles}")
+print(f"The branch misprediction percentage: {(branched_total/total_branch) * 100}")
 
