@@ -98,8 +98,9 @@ class ReservationStation():
         self.rd = None
 
     # could be "extended" [not overriden] in child case if needed [make sure to call the super version in child regardless]
-    def issue (self, rs):
+    def issue (self, rs,pc):
         self.current_state = State.ISSUED
+        self.pc = pc
         # in the child class, set ROB
         # stores any of the following that is needed
          # set rs
@@ -176,10 +177,10 @@ class ALRS(ReservationStation):
         self.total_execution_cycles = cycles
     
     # issue implementation for Arith & logic
-    def issue (self, rd, rs, rt, type):
+    def issue (self, rd, rs, rt, type, pc):
 
         # call parent issue function
-        super().issue(rs)
+        super().issue(rs,pc)
         self.rd = rd
         self.type = type
         self.current_execution_cycle = 0
@@ -268,9 +269,9 @@ class LRS(ReservationStation):
           self.current_execution_cycle = 0
     
 
-     def issue(self, rs, rd, offset):
+     def issue(self, rs, rd, offset,pc):
          self.rd = rd
-         super().issue(rs)
+         super().issue(rs,pc)
          # add imm to addr field
          self.Addr = offset
          # create an entry in the ROB
@@ -343,9 +344,10 @@ class SRS(ReservationStation):
           self.addr_cycles = addr_cycles
           rob.setStoreCycles(cycles)
 
-    def issue(self, rs,rt, offset):
-        super().issue(rs)
+    def issue(self, rs,rt, offset,pc):
+        super().issue(rs, pc)
         self.current_execution_cycle = 0
+
         self.Addr = offset
 
         isBusy, Unit = regst.RegStation.isBusy(rt)
@@ -421,7 +423,7 @@ class BRS(ReservationStation):
           self.total_execution_cycles = cycles
 
     def issue(self, rs, rt, pc, imm):
-        super().issue(rs)
+        super().issue(rs, pc)
         self.current_execution_cycle = 0
         self.pc = pc
         self.Addr = imm
@@ -457,6 +459,7 @@ class BRS(ReservationStation):
             rob.setReady('BEQ',self.name, self.Vj == self.Vk)
             self.current_state = State.EXECUTED
 
+
          
 
     def proceed(self, can_write):
@@ -466,7 +469,7 @@ class BRS(ReservationStation):
             # if free and there's a free ROB -> issue
             # case ('written'|  'idle') if (rob.isFree() & new_inst): self.__issue(rs,rt,offset) 
             # if issued and ready to execute or already executing but not done -> execute
-            case  (State.EXECUTING | State.ISSUED) if self.readyToExec(): 
+            case  (State.EXECUTED | State.ISSUED) if self.readyToExec(): 
                 self.__execute()
         return False
 
@@ -483,7 +486,7 @@ class CRRS(ReservationStation):
         self.pc = pc
         self.type = type
         if(self.type == 'RET'):
-            super().issue(1)
+            super().issue(1,pc)
             self.Dest = rob.addInst(be(self.type,self.name ,'ret', None, None, False, None))  
         else:
             self.rd = 1
