@@ -94,7 +94,7 @@ def issue(pc, inst):
             rt = inst['rt'] if inst['op'] == 'ADD' else inst['imm']
             for r in RS:
                 if r.op == 'ADD' and not r.isBusy():
-                    r.issue(inst['rd'], inst['rs'], inst['rt'], inst['op'])
+                    r.issue(inst['rd'], inst['rs'], rt, inst['op'])
                     return True
             return False
 
@@ -146,11 +146,12 @@ cycles = 0
 pc = 0 # actually modify it to be the value passed at the beginning
 offset = pc
 instcount = 0
-while(instcount != len(instList) or not ROB.Reorderbuffer.isEmpty()):
+print(instList)
+while(pc - offset != len(instList) or not ROB.Reorderbuffer.isEmpty()):
     can_issue = ROB.Reorderbuffer.isFree()
 
     # we have a free bus
-    can_write = True
+    free_bus = True
 
     if cycles != 0:
         flush, pc= ROB.Reorderbuffer.commit(pc)
@@ -166,28 +167,31 @@ while(instcount != len(instList) or not ROB.Reorderbuffer.isEmpty()):
             # note that once can_write is set, we know that this rs is writing
             if(r.isBusy()):
                 prev_state = r.current_state
-                can_write = not r.proceed(can_write)
+                if free_bus:
+                    free_bus = not r.proceed(free_bus)
+                else:
+                    r.proceed(free_bus)
                 if r.current_state == rs.State.WRITTEN and r.current_state != prev_state:
                     written = r
             # handle writing
     
 
-    if not can_write:
+    if not free_bus:
         for r in RS:
             if(r.isBusy()):
                 if r.Qj == written.Dest:
                     r.Qj = 0
-                    r.Vj = ROB.Reorderbuffer.getValueself(written.Dest, written.name)
+                    r.Vj = ROB.Reorderbuffer.getValueself(written.rd, written.name)
 
                 if r.Qk == written.Dest:
                     r.Qk = 0
-                    r.Vk = ROB.Reorderbuffer.getValueself(written.Dest, written.name)
+                    r.Vk = ROB.Reorderbuffer.getValueself(written.rd, written.name)
 
     print(cycles)
 
 
     # trying to issue
-    if can_issue and instcount < len(instList):
+    if can_issue and pc - offset < len(instList):
         inst = instList[pc - offset] # how to deal with the offset for the list
         if issue(pc, inst):
             instcount += 1

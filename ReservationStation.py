@@ -4,6 +4,7 @@ import RegStation as regst
 from ROB import buff_entry as be
 from RegFile import RegFile as RF
 from RegFile import Memory as mem
+from RegFile import int16 
 
 
 # add the rest
@@ -218,9 +219,9 @@ class ALRS(ReservationStation):
             # compute the result and signal that it is ready to be written     
             # fix the lower bit issues       
             match self.op:
-                case 'ADD': self.result = (self.Vj + self.Vk)
-                case 'NAND': self.result = ~(self.Vj & self.Vk)
-                case 'MUL': self.result = (self.Vj * self.Vk)
+                case 'ADD': self.result = int16(self.Vj + self.Vk)
+                case 'NAND': self.result = int16(~(self.Vj & self.Vk))
+                case 'MUL': self.result = int16(self.Vj * self.Vk)
             self.readyToWrite = True
             self.current_state = State.EXECUTED
 
@@ -284,7 +285,7 @@ class LRS(ReservationStation):
             # compute the result and signal that it is ready to be written     
             self.current_state = State.EXECUTED
             # getting the value stored in the memory at a specific address 
-            self.result =  mem.memRead(self.Addr)
+            self.result =  int16(mem.memRead(self.Addr))
             self.readyToWrite = True
 
      def __write(self):
@@ -351,12 +352,9 @@ class SRS(ReservationStation):
 
          if self.current_execution_cycle == 2:
              rob.setAddr('mem', self.name, self.Addr +  self.Vj)
+             self.current_state = State.EXECUTED
 
-         elif self.current_execution_cycle == self.total_execution_cycles:
-            # compute the result and signal that it is ready to be comitted     
-            self.current_state = State.EXECUTED
-
-    def __write(self, rd):
+    def __write(self):
         super().write()
         # writing value from execution to the regs 
         self.current_state = State.WRITTEN
@@ -404,15 +402,15 @@ class BRS(ReservationStation):
         self.Dest = rob.addInst(be(self.op,self.name, 'BEQ', None, None, False))
     
 
-    def __execute(self, pc):
+    def __execute(self):
          super().write()
          if(self.Vj == self.Vk):
              # flushing handled in the main flush all the reservation stations
-             rob.setAddr('BEQ', self.name, pc + 1 + self.Addr) 
+             rob.setAddr('BEQ', self.name,self.pc + 1 + self.Addr) 
              # assuming pc + 1 is implicit
         # writing value from execution to the regs 
          self.current_state = State.WRITTEN    
-         rob.setReady('beq',self.name, self.Vj == self.Vk)
+         rob.setReady('BEQ',self.name, self.Vj == self.Vk)
 
          
 
@@ -458,7 +456,7 @@ class CRRS(ReservationStation):
              super().write()
              self.current_state = State.WRITTEN
          else:
-            self.result =  self.pc + 1
+            self.result =  int16(self.pc + 1)
             rob.setAddr(1, self.name, self.Addr)
     
 

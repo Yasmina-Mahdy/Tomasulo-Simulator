@@ -23,7 +23,7 @@ class Reorderbuffer:
     # you create the entry 
     def addInst(inst:buff_entry):
         Reorderbuffer.buffer.append(inst)
-        return Reorderbuffer.robEntry(inst.Dest)
+        return Reorderbuffer.robEntryself(inst.Dest, inst.Unit)
 
     @staticmethod
     # removes and returns the instruction at the top of the reorder buffer
@@ -35,25 +35,27 @@ class Reorderbuffer:
                     rs.freeReg(Reorderbuffer.robEntry(Reorderbuffer.buffer[0].Dest))
                     Reorderbuffer.buffer.popleft()
                 case 'SW':
-                    commit_cycles += 1
-                    if(commit_cycles == 4):
+                    Reorderbuffer.commit_cycles += 1
+                    if(Reorderbuffer.commit_cycles == 4):
                         RegFile.Memory.memWrite(Reorderbuffer.buffer[0].Addr,Reorderbuffer.buffer[0].Value)
-                        commit_cycles = 0
+                        Reorderbuffer.commit_cycles = 0
                         Reorderbuffer.buffer.popleft()
                 case 'BEQ':
                     if Reorderbuffer.buffer[0].Value == True:
+                        Addr = Reorderbuffer.buffer[0].Addr
                         Reorderbuffer.flush()
                         rs.flushRegs()
-                        return (True, Reorderbuffer.buffer[0].Addr)
+                        return (True, Addr)
                     
                     Reorderbuffer.buffer.popleft()
                     
                 case 'RET' | 'CALL':
+                    Addr = Reorderbuffer.buffer[0].Addr
                     if Reorderbuffer.buffer[0].Type == 'CALL':
                         RegFile.RegFile.regWrite(Reorderbuffer.buffer[0].Dest, Reorderbuffer.buffer[0].Value)
                     Reorderbuffer.flush()
                     rs.flushRegs()
-                    return (True, Reorderbuffer.buffer[0].Addr)
+                    return (True, Addr)
         return (False, pc)    
         
     
@@ -62,17 +64,17 @@ class Reorderbuffer:
     def robEntryself(dest, unit):
        index = 0
        for inst in Reorderbuffer.buffer:
-            index += 1
             if inst.Dest == dest and inst.Unit == unit:
                 return index
+            index += 1
 
     @staticmethod       
     def robEntry(dest):
        index = 0
        for inst in Reorderbuffer.buffer:
-            index += 1
             if inst.Dest == dest :
                 actindex = index
+            index += 1
        return actindex
     
 
@@ -110,13 +112,13 @@ class Reorderbuffer:
     def getValueself(dest, unit):
         for inst in Reorderbuffer.buffer:
             if inst.Dest == dest and inst.Unit == unit:
-                return Reorderbuffer.inst.Value
+                return inst.Value
             
     @staticmethod
     def getValue(dest):
         for inst in Reorderbuffer.buffer:
             if inst.Dest == dest:
-                val = Reorderbuffer.inst.Value
+                val = inst.Value
         return val
             
 

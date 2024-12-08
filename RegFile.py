@@ -12,7 +12,7 @@ class RegFile:
     regs = [0 for i in range(8)]
 
     @staticmethod
-    def regWrite(rd,  res):
+    def regWrite(rd,res):
         if rd != 0:
             RegFile.regs[rd] = int16(res)
 

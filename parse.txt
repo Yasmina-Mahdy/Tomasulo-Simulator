@@ -1,6 +1,6 @@
-LOAD r2 offset ( r1 ) 
-STORE r3 offset ( r4 ) 
-BEQ r2 r6 offset
+LOAD r2 10 ( r1 ) 
+STORE r3 20 ( r4 ) 
+BEQ r2 r6 3
 ADD r7 r0 r1
 ADDI r5 r0 23
 NAND r1 r4 r7
