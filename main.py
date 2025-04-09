@@ -18,10 +18,29 @@ def writemem(filename):
 # INPUTS HERE
 path = input("Enter the name of the file that has the program: ")
 memfile = input("Enter the name of the file that has the memory content: ")
+pc = int(input("Enter the begininning of the program: "))
 default = input("Enter y for default or n new values: ")
 
-if default == 'y' or 'Y':
-    pc = 0
+if default == 'n' or default == 'N':
+    load_units = int(input("Enter load units number: "))
+    store_units = int(input("Enter store units number: "))
+    beq_units = int(input("Enter nlbeq units number: "))
+    cr_units = int(input("Enter call/ret units number: "))
+    add_units = int(input("Enter add units number: "))
+    nand_units = int(input("Enter nand units number: "))
+    mul_units = int(input("Enter mul units number: "))
+    load_addr_cycles = int(input("Enter number of cycles for load address computation: "))
+    load_cycles = int(input("Enter number of cycles for load: "))
+    store_addr_cycles = int(input("Enter number of cycles for store address computation: "))
+    store_cycles = int(input("Enter number of cycles for store: "))
+    beq_cycles = int(input("Enter number of cycles for beq: "))
+    cr_cycles = int(input("Enter number of cycles for call/ret: "))
+    add_cycles = int(input("Enter number of cycles for add: "))
+    nand_cycles = int(input("Enter number of cycles for nand: "))
+    mul_cycles = int(input("Enter number of cycles for mul: "))
+    buff_size = int(input("Enter size of buffer: "))
+    
+else:
     # input the memoryy
     # unit counts
     load_units = 2
@@ -42,25 +61,9 @@ if default == 'y' or 'Y':
     nand_cycles = 1
     mul_cycles = 8
     buff_size = 6
-    load_units = int(input("Enter load units number: "))
-    store_units = int(input("Enter store units number: "))
-    beq_units = int(input("Enter nlbeq units number: "))
-    cr_units = int(input("Enter call/ret units number: "))
-    add_units = int(input("Enter add units number: "))
-    nand_units = int(input("Enter nand units number: "))
-    mul_units = int(input("Enter mul units number: "))
-    load_addr_cycles = int(input("Enter number of cycles for load address computation: "))
-    load_cycles = int(input("Enter number of cycles for load: "))
-    store_addr_cycles = int(input("Enter number of cycles for store address computation: "))
-    store_cycles = int(input("Enter number of cycles for store: "))
-    beq_cycles = int(input("Enter number of cycles for beq: "))
-    cr_cycles = int(input("Enter number of cycles for call/ret: "))
-    add_cycles = int(input("Enter number of cycles for add: "))
-    nand_cycles = int(input("Enter number of cycles for nand: "))
-    mul_cycles = int(input("Enter number of cycles for mul: "))
-    buff_size = int(input("Enter size of buffer: "))
+
  
-ROB.Reorderbuffer.creat_buff(buff_size)
+ROB.Reorderbuffer.create_buff(buff_size)
 
 RS = []
 for i in range(load_units):
